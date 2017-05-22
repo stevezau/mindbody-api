@@ -9,7 +9,7 @@ chai.use(chaiAsPromised);
 chai.should();
 
 export default {
-  'id': -99.,
+  'id': -99,
   'sourceName': process.env.MB_SOURCE_NAME,
   'apiToken': process.env.MB_API_TOKEN,
   'username': 'Siteowner',

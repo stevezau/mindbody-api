@@ -9,7 +9,7 @@ const cli = new MBSites(config.id, config.username, config.password, config.sour
 describe('MindBody Sites', function () {
 
   it('should return site -99', function (done) {
-    cli.getSite(config.id)
+    cli.getSite()
         .then(site => {
           assert.equal(config.id, site.ID);
           assert.equal(site.StudioName, 'API Sandbox Site');
