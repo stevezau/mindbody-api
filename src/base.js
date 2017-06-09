@@ -1,11 +1,13 @@
 import soap from 'soap'
 import request from 'request-promise-native'
 import cheerio from 'cheerio'
+import { RateLimiter } from 'limiter'
+
+const limiter = new RateLimiter(1, 2000)
 
 const MB_API = 'https://api.mindbodyonline.com/0_5'
 
 export default class MindBodyBase {
-
   constructor (serviceName, siteId, username, password, sourceName, apiToken, cookieJar) {
     this.apiToken = apiToken
     this.sourceName = sourceName
@@ -20,7 +22,6 @@ export default class MindBodyBase {
 
     this.username = username
     this.password = password
-
   }
 
   _initRequestOptions (method, url, form = null) {
@@ -69,7 +70,7 @@ export default class MindBodyBase {
             if (!resultObj) {
               return reject(new Error(`Invalid result, missing ${resultName}`))
             }
-            if (resultObj.ErrorCode != 200) {
+            if (resultObj.ErrorCode !== 200) {
               return reject(new Error(`Error ${resultObj.ErrorCode} ${resultObj.Message}`))
             }
             resolve(resultObj)
@@ -79,9 +80,9 @@ export default class MindBodyBase {
     })
   }
 
-  _soapClient () {
+  _soapClient (options = {}) {
     return new Promise((resolve, reject) => {
-      soap.createClient(this.serviceWSDL, (err, client) => {
+      soap.createClient(this.serviceWSDL, options, (err, client) => {
         if (err) {
           reject(err)
         }
@@ -124,7 +125,7 @@ export default class MindBodyBase {
 
       // First load home page to get new cookies
       request(options)
-        .then(() => {
+        .then(rsp => {
           // Send Login Creds
           let options = this._initRequestOptions(
             'POST', `https://clients.mindbodyonline.com/Login?studioID=${this.siteId}&isLibAsync=true&isJson=true`
@@ -137,7 +138,7 @@ export default class MindBodyBase {
           }
           return request(options)
         })
-        .then(() => {
+        .then(rsp => {
           // For some reason you need to post
           let options = this._initRequestOptions(
             'POST', `https://clients.mindbodyonline.com/classic/admhome?studioid=${this.siteId}`
@@ -150,7 +151,7 @@ export default class MindBodyBase {
         .then(rsp => {
           // Check if we actually logged in
           if (this._loginRequired(rsp)) return reject(new Error(`Unable to login to site ${this.siteId}`))
-          if (rsp.statusCode != 200) {
+          if (rsp.statusCode !== 200) {
             return reject(new Error(`Unable to login to site ${this.siteId}, invalid status code ${rsp.statusCode}`))
           }
           console.log('Logged into site')
@@ -162,27 +163,29 @@ export default class MindBodyBase {
 
   _request (options, autoLogin = true) {
     return new Promise((resolve, reject) => {
-      request(options)
-        .then(rsp => {
-          if (rsp.statusCode >= 300 && rsp.statusCode <= 199) {
-            return reject(new Error(`Invalid response ${rsp.statusCode}`))
-          }
-          if (this._loginRequired(rsp)) {
-            if (autoLogin) {
-              this.login()
-                .then(() => this._request(options, false))
-                .then(rsp => resolve(rsp))
-                .catch(err => reject(err))
-            } else {
-              reject(new Error('We thought we logged in but was returned to login screen on 2nd attempt'))
+      limiter.removeTokens(1, () => {
+        request(options)
+          .then(rsp => {
+            if (rsp.statusCode >= 300 && rsp.statusCode <= 199) {
+              return reject(new Error(`Invalid response ${rsp.statusCode}`))
             }
-          } else {
-            resolve(rsp)
-          }
-        })
-        .catch(err => {
-          reject(err)
-        })
+            if (this._loginRequired(rsp)) {
+              if (autoLogin) {
+                this.login()
+                  .then(() => this._request(options, false))
+                  .then(rsp => resolve(rsp))
+                  .catch(err => reject(err))
+              } else {
+                reject(new Error('We thought we logged in but was returned to login screen on 2nd attempt'))
+              }
+            } else {
+              resolve(rsp)
+            }
+          })
+          .catch(err => {
+            reject(err)
+          })
+      })
     })
   }
 

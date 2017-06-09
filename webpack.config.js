@@ -7,7 +7,9 @@ module.exports = {
   externals: [nodeExternals()],
   output: {
     path: path.join(__dirname, 'dist'),
-    filename: 'index.js'
+    filename: 'index.js',
+    library: 'index.js',
+    libraryTarget: 'umd'
   },
   module: {
     loaders: [{

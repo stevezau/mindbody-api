@@ -1,28 +1,35 @@
+import moment from 'moment-timezone'
 import MindbodyBase from './base'
 
-let zPad = (num, pad = 2) => {
-  return String('0' + num).slice(-pad)
-}
-
-let dateStr = (d) => {
-  let date = `${d.getFullYear()}-${zPad(d.getMonth())}-${zPad(d.getDate())}`
-  let time = `${zPad(d.getHours())}:${zPad(d.getMinutes())}:${zPad(d.getSeconds())}`
-  return `${date}T${time}`
-}
-
 export default class Appointment extends MindbodyBase {
-  constructor (siteId, username, password, sourceName, apiToken, driverPath, cookies) {
-    super('Appointment', siteId, username, password, sourceName, apiToken, driverPath, cookies)
+  constructor (siteId, username, password, sourceName, apiToken, timezone) {
+    super('Appointment', siteId, username, password, sourceName, apiToken, null)
+    this.timezone = timezone
   }
 
-  getAppointments (fromDate, toDate, staffIDs, fields) {
+  _soapClient () {
+    return super._soapClient({
+      customDeserializer: {
+        dateTime: (text, context) => {
+          return moment.tz(text, this.timezone)
+        },
+        date: (text, context) => {
+          return moment.tz(text, this.timezone)
+        }
+      }
+    })
+  }
+
+  getAppointments (fromDate, toDate, staffIDs, page = 0, pgSize = 100, fields = null) {
     let req = this._initSoapRequest()
-    req.XMLDetail = 'Full'
-    req.StaffIDs = this._soapArray(staffIDs, 'long')
+    req.XMLDetail = fields ? 'Basic' : 'Full'
+    req.PageSize = pgSize
+    req.StaffIDs = this._soapArray(staffIDs || [0], 'long')
     req.IgnorePrepFinishTimes = false
     req.Fields = this._soapArray(fields, 'string')
-    req.StartDate = dateStr(fromDate)
-    req.EndDate = dateStr(toDate)
+    req.StartDate = moment(fromDate).format('YYYY-MM-DDTHH:mm:ss')
+    req.EndDate = moment(toDate).format('YYYY-MM-DDTHH:mm:ss')
+    req.CurrentPageIndex = page
 
     return new Promise((resolve, reject) => {
       this._soapReq('GetScheduleItems', 'GetScheduleItemsResult', req)
@@ -37,7 +44,7 @@ export default class Appointment extends MindbodyBase {
               }
             }
           }
-          resolve(appointments)
+          resolve(({appointments: appointments, countTotal: result.ResultCount, pagesTotal: result.TotalPageCount}))
         })
         .catch(err => reject(err))
     })

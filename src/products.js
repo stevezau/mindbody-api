@@ -3,8 +3,8 @@ import MindbodyBase from './base'
 let prodIdRegex = new RegExp(/.*id=([0-9]+).*/, 'i')
 
 export default class Products extends MindbodyBase {
-  constructor (siteId, username, password, sourceName, apiToken, driverPath, cookies) {
-    super(null, siteId, username, password, sourceName, apiToken, driverPath, cookies)
+  constructor (siteId, username, password, sourceName, apiToken, cookieJar) {
+    super(null, siteId, username, password, sourceName, apiToken, cookieJar)
   }
 
   getCategories () {
@@ -22,7 +22,7 @@ export default class Products extends MindbodyBase {
               })
             }
           })
-          resolve(categories)
+          resolve({categories: categories})
         })
         .catch(err => reject(err))
     })
@@ -50,19 +50,20 @@ export default class Products extends MindbodyBase {
     })
   }
 
-  getAllProducts (categoryId, invDate) {
-    console.log(`Running report adm_rpt_inv for product category id %s`)
+  getAllProducts (category, invDate) {
+    console.log(`Running report adm_rpt_inv for product category id ${category.id}`)
 
     let form = {
+      'CSRFToken': '',
       'reportUrl': '/ASP/adm/adm_rpt_inv.asp',
-      'category': '',
+      'category': category.name,
       'frmGenReport': 'true',
       'frmExpReport': 'false',
       'updateInv': 'false',
       'optLoc': '0',
       'optSupplier': '0',
-      'optCat': categoryId,
-      'inventoryOnDate': `${invDate.getMonth() + 1}/${invDate.getDate()}/${invDate.getFullYear()}`,
+      'optCat': category.id,
+      'inventoryOnDate': `${invDate.getFullYear()}-${invDate.getMonth() + 1}-${invDate.getDate()}`,
       'optSortBy': '0',
       'optIncludeNoInvProd': 'on',
       'optIncludeDisc': 'on',
@@ -85,6 +86,7 @@ export default class Products extends MindbodyBase {
           $('#resultsTable1 .rows').each((i, elem) => {
             let tds = $(elem).find('td')
             let match = prodIdRegex.exec($(tds[2]).find('a').attr('href'))
+
             if (match) {
               let costTd = 9
               let retailTd = 10
@@ -95,15 +97,16 @@ export default class Products extends MindbodyBase {
               }
 
               products.push({
-                'id': parseInt(match[1]),
-                'name': $(tds[2]).text().trim(),
-                'supplierName': $(tds[4]).text().trim(),
-                'cost': Number($(tds[costTd]).text().replace(/[^0-9\.]+/g, '')),
-                'retail': Number($(tds[retailTd]).text().replace(/[^0-9\.]+/g, ''))
+                'ID': parseInt(match[1]),
+                'Name': $(tds[2]).text().trim(),
+                'Supplier': $(tds[4]).text().trim(),
+                'Location': $(tds[7]).text().trim(),
+                'Cost': Number($(tds[costTd]).text().replace(/[^0-9\\.]+/g, '')),
+                'Retail': Number($(tds[retailTd]).text().replace(/[^0-9\\.]+/g, ''))
               })
             }
           })
-          resolve(products)
+          resolve({products: products})
         })
         .catch(err => reject(err))
     })
@@ -125,7 +128,7 @@ export default class Products extends MindbodyBase {
               })
             }
           })
-          resolve(suppliers)
+          resolve({suppliers: suppliers})
         })
         .catch(err => reject(err))
     })

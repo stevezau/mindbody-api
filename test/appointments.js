@@ -10,8 +10,8 @@ describe('MindBody Appointments', function () {
     let toDate = new Date(Date.now())
     let fromDate = new Date(Date.now() - 2.592e+9) // minus 30 days
     cli.getAppointments(fromDate, toDate)
-      .then(appointments => {
-        assert.isAbove(appointments.length, 2)
+      .then(({appointments}) => {
+        assert.isAbove(appointments.length, 1)
         done()
       })
       .catch(err => done(err))
