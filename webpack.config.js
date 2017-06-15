@@ -6,7 +6,7 @@ module.exports = {
   target: 'node',
   externals: [nodeExternals()],
   output: {
-    path: path.join(__dirname, 'dist'),
+    path: path.resolve(__dirname, './dist'),
     filename: 'index.js',
     library: 'index.js',
     libraryTarget: 'umd'

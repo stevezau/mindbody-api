@@ -5,7 +5,6 @@ import chai from 'chai';
 const assert = chai.assert;
 const cli = new MBSites(config.id, config.username, config.password, config.sourceName, config.apiToken, config.jar);
 
-
 describe('MindBody Sites', function () {
 
   it('should return site -99', function (done) {

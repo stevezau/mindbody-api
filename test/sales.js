@@ -3,7 +3,7 @@ import config from './index'
 import chai from 'chai'
 
 const assert = chai.assert
-const cli = new MBSales(config.id, config.username, config.password, config.sourceName, config.apiToken)
+const cli = new MBSales(config.id, config.username, config.password, config.sourceName, config.apiToken, null, config.jar)
 
 describe('MindBody Sales', function () {
   it('should return sales', function (done) {
@@ -17,4 +17,12 @@ describe('MindBody Sales', function () {
       .catch(err => done(err))
   })
 
+  it('should return sale units', function (done) {
+    cli.getSaleUnits(100159252)
+      .then(({units}) => {
+        assert.isAbove(units.length, 0)
+        done()
+      })
+      .catch(err => done(err))
+  })
 })

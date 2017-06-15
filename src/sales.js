@@ -60,7 +60,7 @@ export default class Sales extends MindbodyBase {
         DiscountPercent: parseFloat($(tds[8]).text().replace(dollarRegex, '')),
         DiscountAmount: parseFloat($(tds[9]).text().replace(dollarRegex, '')),
         Tax: parseFloat($(tds[10]).text().replace(dollarRegex, '')),
-        Total: parseFloat($(tds[11]).text().replace(dollarRegex, '')),
+        Total: parseFloat($(tds[11]).text().replace(dollarRegex, ''))
       })
     })
   }
@@ -152,11 +152,8 @@ export default class Sales extends MindbodyBase {
     return new Promise((resolve, reject) => {
       this.get(`https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_voidedit.asp?saleno=${saleId}`)
         .then(rsp => {
+          let units = []
           let $ = this._parse(rsp.body)
-          let sale = {
-            id: saleId,
-            units: []
-          }
 
           $('table.adyenClass tr').each((i, tr) => {
             const tds = $(tr).children('td').map((i, td) => {
@@ -164,30 +161,40 @@ export default class Sales extends MindbodyBase {
             })
             const text = tds[0].text()
             const a = tds[0].find('a')
-            let unit = {}
-            if (tds.length !== 4 || !text.contains('Item:')) return
-            if (text.contains('Gift Card')) {
-              unit.type = 'gift_card'
-            } else if (a) {
+            let unit = {
+              name: tds[0].find('b').text().trim(),
+              id: 0
+            }
+            if (tds.length !== 4 || !text.includes('Item:')) return
+
+            if (a.length > 0) {
               unit.id = parseInt($(a).attr('href').match(/Id=([0-9]+)/)[1])
               unit.type = 'product'
             } else {
-              unit.type = 'service'
-              const service_a = tds[-1].find('a')
-              if (service_a) {
-                const href = a.attr('href')
-                if (href.contains('saleno')) {
+              unit.type = text.includes('Gift Card') ? 'gift_card' : 'service'
+              const unitA = tds[tds.length - 1].find('a')
+              if (unitA.length > 0) {
+                const href = unitA.attr('href')
+                if (href.includes('saleno')) {
                   // Returned item, go to the original sale
-                  m = re.match('.*saleno=([0-9]+).*', a_href['href'])
-                  units = self.sale_units_by_id(int(m.group(1))) + units
+                  const parsedHref = href.match(/.*saleno=([0-9]+)/)
+                  if (parsedHref.length > 0) {
+                    return units.push(this.getSaleUnits(parseInt(href[1])))
+                  }
                 } else {
-                  m = re.match('.*doRefund\\([0-9]+.([0-9]+).*', a_href['href'], re.IGNORECASE)
-                  unit_id = int(m.group(1))
+                  const parsedHref = href.match(/.*doRefund\([0-9]+.([0-9]+).*/)
+                  if (parsedHref && parsedHref.length > 0) {
+                    unit.id = parseInt(parsedHref[1])
+                  }
                 }
               }
             }
+            units.push(Promise.resolve(unit))
           })
-          return resolve(sale)
+          return Promise.all(units)
+        })
+        .then(units => {
+          resolve({units: units})
         })
         .catch(err => reject(err))
     })

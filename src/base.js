@@ -27,7 +27,7 @@ export default class MindBodyBase {
   _initRequestOptions (method, url, form = null) {
     let options = {
       'headers': {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:53.0) Gecko/20100101 Firefox/53.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.1'
       },
       'resolveWithFullResponse': true,
       'jar': this.reqJar,
@@ -107,6 +107,10 @@ export default class MindBodyBase {
     }
   }
 
+  _captcha (rsp) {
+    return rsp.body.includes('distil_r_captcha')
+  }
+
   _loginRequired (rsp) {
     if (rsp.req.path.startsWith('/launch') || rsp.req.path.startsWith('/Error')) return true
     if (!rsp.body) return false
@@ -150,7 +154,9 @@ export default class MindBodyBase {
         })
         .then(rsp => {
           // Check if we actually logged in
+          if (this._captcha(rsp)) return reject(new Error(`Captcha detected during login for site ${this.siteId}`))
           if (this._loginRequired(rsp)) return reject(new Error(`Unable to login to site ${this.siteId}`))
+
           if (rsp.statusCode !== 200) {
             return reject(new Error(`Unable to login to site ${this.siteId}, invalid status code ${rsp.statusCode}`))
           }
@@ -166,6 +172,7 @@ export default class MindBodyBase {
       limiter.removeTokens(1, () => {
         request(options)
           .then(rsp => {
+            if (this._captcha(rsp)) return reject(new Error('Captcha detected, consider using cookies to persist logged in state'))
             if (rsp.statusCode >= 300 && rsp.statusCode <= 199) {
               return reject(new Error(`Invalid response ${rsp.statusCode}`))
             }

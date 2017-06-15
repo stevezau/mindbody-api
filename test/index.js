@@ -1,12 +1,12 @@
 // Mindbody Test Sandbox Site
 // https://developers.mindbodyonline.com/Account/Credentials
 
-import tough from 'tough-cookie';
 import chai from 'chai'
 import chaiAsPromised from 'chai-as-promised'
+import FileCookieStore from 'tough-cookie-filestore'
 
-chai.use(chaiAsPromised);
-chai.should();
+chai.use(chaiAsPromised)
+chai.should()
 
 export default {
   'id': -99,
@@ -14,6 +14,5 @@ export default {
   'apiToken': process.env.MB_API_TOKEN,
   'username': 'Siteowner',
   'password': 'apitest1234',
-  'jar': new tough.MemoryCookieStore()
-};
-
+  'jar': new FileCookieStore('./cookies.json')
+}
