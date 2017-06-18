@@ -2,9 +2,8 @@
   "name": "mindbody-api",
   "version": "1.0.1",
   "description": "Interface to Mindbody",
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
   "scripts": {
-    "clean": "rm -rf ./dist",
     "build": "webpack",
     "lint": "jshint src",
     "prepublish": "npm run build",
@@ -20,6 +19,10 @@
   "bugs": {
     "url": "https://github.com/stevezau/mindbody-api/issues"
   },
+  "files": [
+    "README.md",
+    "dist"
+  ],
   "homepage": "https://github.com/stevezau/mindbody-api#readme",
   "devDependencies": {
     "babel-core": "^6.13.2",
