@@ -1,8 +1,8 @@
 import MindbodyBase from './base'
 
 export default class Sites extends MindbodyBase {
-  constructor (siteId, username, password, sourceName, apiToken, driverPath, cookies) {
-    super('Site', siteId, username, password, sourceName, apiToken, driverPath, cookies)
+  constructor (siteId, username, password, sourceName, apiToken, cookieJar) {
+    super('Site', siteId, username, password, sourceName, apiToken, cookieJar)
   }
 
   getSite () {

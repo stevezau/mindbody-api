@@ -36,14 +36,14 @@ export default class Products extends MindbodyBase {
           let supplier = $('#SelectedProductSuppliersId option:selected')
           let revenueCategory = $('#PrimaryCategoryId option:selected')
           resolve({
-            'id': productId,
-            'name': $('#ProductName').attr('value'),
-            'cost': Number($('#WholesaleCost').attr('value')),
-            'retail': Number($('#ProductPrice').attr('value')),
-            'supplierName': supplier ? supplier.text() : null,
-            'supplierId': parseInt(supplier ? supplier.attr('value') : 0),
-            'revenueCategoryName': revenueCategory ? revenueCategory.text() : null,
-            'revenueCategoryId': parseInt(revenueCategory ? revenueCategory.attr('value') : 0)
+            'ID': productId,
+            'Name': $('#ProductName').attr('value').trim(),
+            'Cost': Number($('#WholesaleCost').attr('value')),
+            'Retail': Number($('#ProductPrice').attr('value')),
+            'Supplier': supplier ? supplier.text().trim() : null,
+            'SupplierId': parseInt(supplier ? supplier.attr('value') : 0),
+            'RevenueCategoryName': revenueCategory ? revenueCategory.text().trim() : null,
+            'RevenueCategoryId': parseInt(revenueCategory ? revenueCategory.attr('value') : 0)
           })
         })
         .catch(err => reject(err))

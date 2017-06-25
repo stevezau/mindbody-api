@@ -3,7 +3,7 @@ import request from 'request-promise-native'
 import cheerio from 'cheerio'
 import { RateLimiter } from 'limiter'
 
-const limiter = new RateLimiter(1, 2000)
+const limiter = new RateLimiter(1, 500)
 
 const MB_API = 'https://api.mindbodyonline.com/0_5'
 
