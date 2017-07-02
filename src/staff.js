@@ -70,7 +70,7 @@ export default class Staff extends MindbodyBase {
     $('table[cellspacing="10"] tr').each((i, tr) => {
       tr = $(tr)
       if (tr.attr('class') && tr.attr('class').includes('whiteHeader')) {
-        currentStaff = tr.text().trim()
+        currentStaff = tr.text().trim().replace(/\u00A0/, ' ') // MB Uses a weird space char, replace with space
       }
       if (tr.attr('style') && tr.attr('style').includes('background-color:#D0D0D0')) {
         currentTask = tr.text().trim()
@@ -109,7 +109,7 @@ export default class Staff extends MindbodyBase {
             'id': parseInt(id[1]),
             'start': checkIn,
             'finish': checkOut,
-            'hours': hours,
+            'hours': parseFloat(hours),
             'staff': currentStaff,
             'task': currentTask
           })
@@ -130,8 +130,8 @@ export default class Staff extends MindbodyBase {
       'optLocation': '0',
       'optTask': '',
       'optInactive': 'on',
-      'requiredtxtDateStart': moment(from).format('YYYY/MM/DD'),
-      'requiredtxtDateEnd': moment(to).format('YYYY/MM/DD')
+      'requiredtxtDateStart': moment.tz(from, this.timezone).format('YYYY/MM/DD'),
+      'requiredtxtDateEnd': moment.tz(to, this.timezone).format('YYYY/MM/DD')
     }
 
     return new Promise((resolve, reject) => {

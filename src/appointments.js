@@ -20,16 +20,14 @@ export default class Appointment extends MindbodyBase {
     })
   }
 
-  getAppointments (fromDate, toDate, staffIDs, page = 0, pgSize = 100, fields = null) {
+  getAppointments (fromDate, toDate, staffIDs, fields = null) {
     let req = this._initSoapRequest()
     req.XMLDetail = fields ? 'Basic' : 'Full'
-    req.PageSize = pgSize
     req.StaffIDs = this._soapArray(staffIDs || [0], 'long')
     req.IgnorePrepFinishTimes = false
     req.Fields = this._soapArray(fields, 'string')
     req.StartDate = moment(fromDate).format('YYYY-MM-DDTHH:mm:ss')
     req.EndDate = moment(toDate).format('YYYY-MM-DDTHH:mm:ss')
-    req.CurrentPageIndex = page
 
     return new Promise((resolve, reject) => {
       this._soapReq('GetScheduleItems', 'GetScheduleItemsResult', req)
@@ -44,7 +42,7 @@ export default class Appointment extends MindbodyBase {
               }
             }
           }
-          resolve(({appointments: appointments, countTotal: result.ResultCount, pagesTotal: result.TotalPageCount}))
+          resolve({appointments: appointments})
         })
         .catch(err => reject(err))
     })
