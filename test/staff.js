@@ -3,7 +3,7 @@ import config from './index'
 import chai from 'chai'
 
 const assert = chai.assert
-const cli = new MBStaff(config.id, config.username, config.password, config.sourceName, config.apiToken, null, config.jar)
+const cli = new MBStaff(config.id, config.username, config.password, config.sourceName, config.apiToken, config.jar, null)
 
 describe('MindBody Staff', function () {
   it('should return staff staff', function (done) {

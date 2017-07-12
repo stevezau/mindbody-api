@@ -2,8 +2,8 @@ import moment from 'moment-timezone'
 import MindbodyBase from './base'
 
 export default class Clients extends MindbodyBase {
-  constructor (siteId, username, password, sourceName, apiToken, timezone) {
-    super('Client', siteId, username, password, sourceName, apiToken, null)
+  constructor (siteId, username, password, sourceName, apiToken, cookieJar, timezone) {
+    super('Client', siteId, username, password, sourceName, apiToken, cookieJar)
     this.timezone = timezone
   }
 
