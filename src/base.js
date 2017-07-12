@@ -112,6 +112,10 @@ export default class MindBodyBase {
   }
 
   _loginRequired (rsp) {
+    if (rsp.body.startsWith('{')) {
+      const json = JSON.parse(rsp.body)
+      if (json.sessionExpired) return true
+    }
     if (rsp.req.path.startsWith('/launch') || rsp.req.path.startsWith('/Error')) return true
     if (!rsp.body) return false
     return (
