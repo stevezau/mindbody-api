@@ -70,7 +70,7 @@ export default class Staff extends MindbodyBase {
     $('table[cellspacing="10"] tr').each((i, tr) => {
       tr = $(tr)
       if (tr.attr('class') && tr.attr('class').includes('whiteHeader')) {
-        currentStaff = tr.text().trim().replace(/\u00A0/, ' ') // MB Uses a weird space char, replace with space
+        currentStaff = tr.text().trim().replace(/\u00A0/g, ' ') // MB Uses a weird space char, replace with space
       }
       if (tr.attr('style') && tr.attr('style').includes('background-color:#D0D0D0')) {
         currentTask = tr.text().trim()

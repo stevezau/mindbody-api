@@ -50,7 +50,7 @@ export default class Sales extends MindbodyBase {
         }
       }
 
-      const dollarRegex = /[%$,]/
+      const dollarRegex = /[%$,]/g
 
       sale.Units.push({
         Name: $(tds[3]).text().trim(),
