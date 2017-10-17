@@ -1,32 +1,30 @@
-import MBService from '../src/services'
-import config from './index'
-import chai from 'chai'
+import MBService from '../src/services';
+import config from './index';
+import chai from 'chai';
 
-const assert = chai.assert
-const cli = new MBService(config.id, config.username, config.password, config.sourceName, config.apiToken, config.jar)
+const assert = chai.assert;
+const cli = new MBService(config.id, config.username, config.password, config.sourceName, config.apiToken, config.jar);
 
-let expect = chai.expect
+const expect = chai.expect;
 
-describe('MindBody Services', function () {
-  it('should return services', function (done) {
+describe('MindBody Services', () => {
+  it('should return services', (done) => {
     cli.login()
       .then(() => cli.getAllServices())
-      .then(({services}) => {
-        assert.lengthOf(services, 5)
-        done()
+      .then(({ services }) => {
+        assert.lengthOf(services, 5);
+        done();
       })
-      .catch(err => done(err))
-  })
+      .catch(err => done(err));
+  });
 
-  it('should enrich services', function (done) {
+  it('should enrich services', (done) => {
     cli.login()
       .then(() => cli.getAllServices())
-      .then(({services}) => {
-        return cli.enrichService(services[0])
+      .then(({ services }) => cli.enrichService(services[0]))
+      .then((service) => {
+        done();
       })
-      .then(service => {
-        done()
-      })
-      .catch(err => done(err))
-  })
-})
+      .catch(err => done(err));
+  });
+});

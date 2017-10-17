@@ -1,58 +1,59 @@
-import moment from 'moment-timezone'
-import MindbodyBase from './base'
+import moment from 'moment-timezone';
+import MindbodyBase from './base';
 
 export default class Clients extends MindbodyBase {
-  constructor (siteId, username, password, sourceName, apiToken, cookieJar, timezone) {
-    super('Client', siteId, username, password, sourceName, apiToken, cookieJar)
-    this.timezone = timezone
+  constructor(siteId, username, password, sourceName, apiToken, cookieJar, timezone) {
+    super('Client', siteId, username, password, sourceName, apiToken, cookieJar);
+    this.timezone = timezone;
   }
 
-  getClient (clientId) {
+  getClient(clientId) {
     return new Promise((resolve, reject) => {
       this.getClients(null, [clientId])
-        .then(({clients}) => {
+        .then(({ clients }) => {
           if (clients.length === 1) {
-            resolve(clients[0])
+            resolve(clients[0]);
           } else {
-            resolve()
+            resolve();
           }
         })
-        .catch(err => reject(err))
-    })
+        .catch(err => reject(err));
+    });
   }
 
-  _soapClient () {
-    return super._soapClient({
+  soapClient() {
+    return super.soapClient({
       customDeserializer: {
-        dateTime: (text, context) => {
-          return moment.tz(text, this.timezone)
-        },
-        date: (text, context) => {
-          return moment.tz(text, this.timezone)
-        }
+        dateTime: text => moment.tz(text, this.timezone),
+        date: text => moment.tz(text, this.timezone)
       }
-    })
+    });
   }
 
-  getClients (searchText = '', clientIds = [], page = 0, pgSize = 100, fields = null) {
-    let req = this._initSoapRequest()
-    req.XMLDetail = 'Full'
-    req.PageSize = pgSize
-    req.SearchText = searchText
-    req.ClientIDs = this._soapArray(clientIds, 'string')
-    req.Fields = this._soapArray(fields, 'string')
-    req.CurrentPageIndex = page
+  getClients(searchText = '', clientIds = [], page = 0, pgSize = 100, lastModifiedDate = null, fields = null) {
+    const req = this.initSoapRequest();
+    req.XMLDetail = 'Full';
+    req.PageSize = pgSize;
+    req.SearchText = searchText;
+    req.ClientIDs = clientIds.map(value => ({ string: value }));
+    req.Fields = fields.map(value => ({ string: value }));
+    req.LastModifiedDate = lastModifiedDate ? lastModifiedDate.toISOString() : null;
+    req.CurrentPageIndex = page;
 
     return new Promise((resolve, reject) => {
-      this._soapReq('GetClients', 'GetClientsResult', req)
-        .then(result => {
+      this.soapReq('GetClients', 'GetClientsResult', req)
+        .then((result) => {
           if (result.Clients) {
-            resolve({clients: result.Clients.Client, countTotal: result.ResultCount, pagesTotal: result.TotalPageCount})
+            resolve({
+              clients: result.Clients.Client,
+              countTotal: result.ResultCount,
+              pagesTotal: result.TotalPageCount
+            });
           } else {
-            resolve([])
+            resolve([]);
           }
         })
-        .catch(err => reject(err))
-    })
+        .catch(err => reject(err));
+    });
   }
 }

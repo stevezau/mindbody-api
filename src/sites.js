@@ -1,29 +1,29 @@
-import MindbodyBase from './base'
+import MindbodyBase from './base';
 
 export default class Sites extends MindbodyBase {
-  constructor (siteId, username, password, sourceName, apiToken, cookieJar) {
-    super('Site', siteId, username, password, sourceName, apiToken, cookieJar)
+  constructor(siteId, username, password, sourceName, apiToken, cookieJar) {
+    super('Site', siteId, username, password, sourceName, apiToken, cookieJar);
   }
 
-  getSite () {
-    let req = this._initSoapRequest()
-    req.XMLDetail = 'Full'
+  getSite() {
+    const req = this.initSoapRequest();
+    req.XMLDetail = 'Full';
 
     return new Promise((resolve, reject) => {
-      this._soapReq('GetSites', 'GetSitesResult', req)
-        .then(result => {
+      this.soapReq('GetSites', 'GetSitesResult', req)
+        .then((result) => {
           if (result.Sites && result.Sites.Site) {
             // Enrich with timezone
             this.post('https://clients.mindbodyonline.com/BusinessAndConnectLocations/BusinessAndLocationData')
-              .then(rsp => {
-                resolve(Object.assign(result.Sites.Site[0], JSON.parse(rsp.body)))
+              .then((rsp) => {
+                resolve(Object.assign(result.Sites.Site[0], JSON.parse(rsp.body)));
               })
-              .catch(err => reject(err))
+              .catch(err => reject(err));
           } else {
-            reject(new Error('No site was returned'))
+            reject(new Error('No site was returned'));
           }
         })
-        .catch(err => reject(err))
-    })
+        .catch(err => reject(err));
+    });
   }
 }
