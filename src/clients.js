@@ -36,7 +36,7 @@ export default class Clients extends MindbodyBase {
     req.PageSize = pgSize;
     req.SearchText = searchText;
     req.ClientIDs = clientIds.map(value => ({ string: value }));
-    req.Fields = fields.map(value => ({ string: value }));
+    req.Fields = (fields || []).map(value => ({ string: value }));
     req.LastModifiedDate = lastModifiedDate ? lastModifiedDate.toISOString() : null;
     req.CurrentPageIndex = page;
 

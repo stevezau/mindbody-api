@@ -3,11 +3,13 @@ import MindbodyBase from './base';
 const serviceRegex = new RegExp(/var jsonModel = JSON.parse\("(.+?)"\);/, 'i');
 
 function findById(service, keyType, keyId, value) {
+  let found = null;
   service[keyType].forEach((item) => {
     if (item[keyId] === value) {
-      return item;
+      found = item;
     }
   });
+  return found;
 }
 
 export default class Services extends MindbodyBase {
@@ -15,7 +17,7 @@ export default class Services extends MindbodyBase {
     super('Sale', siteId, username, password, sourceName, apiToken, cookieJar);
   }
 
-  getAllServices(fields) {
+  getAllServices(fields = []) {
     const req = this.initSoapRequest();
     req.XMLDetail = fields ? 'Basic' : 'Full';
     req.Fields = fields.map(value => ({ string: value }));

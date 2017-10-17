@@ -21,7 +21,7 @@ export default class Appointment extends MindbodyBase {
     req.XMLDetail = fields ? 'Basic' : 'Full';
     req.StaffIDs = (staffIDs || [0]).map(value => ({ long: value }));
     req.IgnorePrepFinishTimes = false;
-    req.Fields = fields.map(value => ({ string: value }));
+    req.Fields = (fields || []).map(value => ({ string: value }));
     req.StartDate = moment(fromDate).format('YYYY-MM-DDTHH:mm:ss');
     req.EndDate = moment(toDate).format('YYYY-MM-DDTHH:mm:ss');
 
