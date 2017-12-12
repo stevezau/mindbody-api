@@ -32,18 +32,21 @@ export default class Staff extends MindbodyBase {
     return new Promise((resolve, reject) => {
       this.get('https://clients.mindbodyonline.com/Staff/Manage')
         .then((rsp) => {
-          const staff = [];
+          const staffIds = [];
           const $ = cheerio.load(rsp.body);
           $('#inactiveStaffTable > tbody > tr').each((i, tr) => {
             const tds = $(tr).children('td').map((_, td) => $(td));
-            const name = tds[0].text().trim();
             const staffHref = tds[0].find('a').attr('href');
             if (staffHref.length > 0) {
-              const staffID = Number(staffHref.match(/ID=([0-9]+)/)[1]);
-              staff.push({ Name: name, ID: staffID });
+              staffIds.push(Number(staffHref.match(/ID=([0-9]+)/)[1]));
             }
           });
-          resolve(staff);
+          return Promise.resolve(staffIds);
+        })
+        .then((staffIds) => {
+          staffIds.reduce((p, staffID) => {
+            return p.then(staff => this.getStaffByID(staffID).then(parsedStaff => [...staff, parsedStaff]));
+          }, Promise.resolve([])).then(staff => resolve(staff));
         })
         .catch(err => reject(err));
     });
@@ -54,6 +57,26 @@ export default class Staff extends MindbodyBase {
       Promise.all([this.getStaffSoap(), this.getStaffInactive()])
         .then((results) => {
           resolve(results[0].concat(results[1]));
+        })
+        .catch(err => reject(err));
+    });
+  }
+
+  getStaffByID(staffID) {
+    return new Promise((resolve, reject) => {
+      this.get(`https://clients.mindbodyonline.com/asp/adm/adm_trn_e.asp?trnID=${staffID}`)
+        .then((rsp) => {
+          const $ = cheerio.load(rsp.body);
+          const firstName = $('#fauxFirst_Name').attr('value');
+          const lastName = $('#fauxLast_Name').attr('value');
+          const displayName = $('#txtDisplayName').attr('value');
+
+          resolve({
+            ID: staffID,
+            FirstName: firstName,
+            LastName: lastName,
+            Name: displayName || `${firstName} ${lastName}`.trim()
+          });
         })
         .catch(err => reject(err));
     });
