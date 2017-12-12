@@ -7,10 +7,20 @@ function parseTable($, table, sales) {
   rep = (rep.length === 2 ? `${rep[1]} ${rep[0]}` : `${rep[0]}`).trim();
 
   table.children('tr').each((i, tr) => {
-    const tds = $(tr).children('td').map((_, td) => $(td));
+    let tds = $(tr).children('td').map((_, td) => $(td));
     const saleId = Number($(tds[0]).text());
     if (Number.isNaN(saleId)) {
       return; // Probably html table thead
+    }
+
+    // Handle case where item name has a < > which causes issues with parsing via cheerio
+    if (!$(tds[5]).text()) {
+      const html = $(tr).html();
+      const found = html.match(/(itemnameCell">)(.+)(<="" td="">)/);
+      if (!found) return;
+      const name = found[2].replace('=""', '').replace('<', '&lt;').replace('>', '&gt;');
+      const parsed = cheerio.load(html.replace(found[0], `${found[1]}${name}</td>`), { decodeEntities: true });
+      tds = parsed('td');
     }
 
     if (!sales[saleId]) {
