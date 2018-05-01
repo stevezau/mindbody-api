@@ -6,7 +6,7 @@ function parseTable($, table, sales) {
   let rep = table.children('caption').text().trim().split(',', 2);
   rep = (rep.length === 2 ? `${rep[1]} ${rep[0]}` : `${rep[0]}`).trim();
 
-  table.children('tr').each((i, tr) => {
+  table.children('tbody').children('tr').each((i, tr) => {
     let tds = $(tr).children('td').map((_, td) => $(td));
     const saleId = Number($(tds[0]).text());
     if (Number.isNaN(saleId)) {
