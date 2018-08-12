@@ -85,7 +85,7 @@ export default class Sales extends MindbodyBase {
       optRep: '0',
       optIncludeAutoRenews: 'Include',
       optDisMode: 'Detail',
-      optAllCombined: 'on',
+      optBasis: 'AccrualBasis',
       optIncludeReturns: 'true',
       quickDateSelectionTwo: '',
       optSaleLoc: [],
