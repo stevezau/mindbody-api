@@ -12,11 +12,16 @@ module.exports = {
     libraryTarget: 'umd'
   },
   module: {
-    loaders: [{
-      test: /\.js$/,
-      loaders: ['babel-loader'],
-      include: __dirname,
-      exclude: /node_modules/
-    }]
-  }
+    rules: [
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: 'babel-loader'
+          }
+        ],
+      }
+    ]
+  },
 };
