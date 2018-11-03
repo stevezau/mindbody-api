@@ -2,15 +2,17 @@ const path = require('path');
 const nodeExternals = require('webpack-node-externals');
 
 module.exports = {
-  entry: './src/index.js',
   target: 'node',
-  externals: [nodeExternals()],
-  output: {
-    path: path.resolve(__dirname, './dist'),
-    filename: 'index.js',
-    library: 'index.js',
-    libraryTarget: 'umd'
+  optimization: {
+    // We no not want to minimize our code.
+    minimize: false
   },
+  performance: {
+    // Turn off size warnings for entry points
+    hints: false
+  },
+  devtool: 'nosources-source-map',
+  externals: [nodeExternals()],
   module: {
     rules: [
       {
@@ -24,4 +26,10 @@ module.exports = {
       }
     ]
   },
+  output: {
+    libraryTarget: 'commonjs2',
+    path: path.join(__dirname, '.webpack'),
+    filename: '[name].js',
+    sourceMapFilename: '[file].map'
+  }
 };

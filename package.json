@@ -1,6 +1,6 @@
 {
   "name": "mindbody-api",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "Interface to Mindbody",
   "main": "./dist/index.js",
   "scripts": {
@@ -48,6 +48,6 @@
     "moment": "^2.22.2",
     "moment-timezone": "^0.5.23",
     "request-promise-native": "^1.0.5",
-    "soap": "^0.25.0"
+    "soap": "^0.23.0"
   }
 }
