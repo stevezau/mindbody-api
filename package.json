@@ -6,7 +6,6 @@
   "scripts": {
     "build": "webpack",
     "lint": "jshint src",
-    "prepublish": "npm run build",
     "test": "mocha --timeout 15000 --compilers js:babel-core/register",
     "prepare": "npm run build",
     "release": "npmpub"
