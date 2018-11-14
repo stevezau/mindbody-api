@@ -8,23 +8,21 @@
     "lint": "jshint src",
     "prepublish": "npm run build",
     "test": "mocha --timeout 15000 --compilers js:babel-core/register",
+    "prepare": "npm run build",
     "release": "npmpub"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/stevezau/mindbody-api.git"
   },
   "author": "stevezau",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/stevezau/mindbody-api/issues"
   },
-  "files": [
-    "README.md",
-    "dist"
-  ],
   "homepage": "https://github.com/stevezau/mindbody-api#readme",
-  "devDependencies": {
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevezau/mindbody-api.git"
+  },
+  "readme": "README.md",
+   "devDependencies": {
     "@babel/cli": "^7.1.5",
     "@babel/core": "^7.1.6",
     "@babel/preset-env": "^7.1.6",
