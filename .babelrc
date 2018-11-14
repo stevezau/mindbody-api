@@ -1,9 +1,13 @@
 {
-  "comments": false,
+  "plugins": ["source-map-support"],
   "presets": [
-    "node8"
-  ],
-  "plugins": [
-    "source-map-support"
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "node": "8.10"
+        }
+      }
+    ]
   ]
 }
