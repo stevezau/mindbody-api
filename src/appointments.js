@@ -10,7 +10,12 @@ export default class Appointment extends MindbodyBase {
   soapClient() {
     return super.soapClient({
       customDeserializer: {
-        dateTime: text => moment.tz(text, this.timezone),
+        dateTime: (text, context) => {
+          if (context.name === 'StartDateTime') {
+            return text;
+          }
+          return moment.tz(text, this.timezone);
+        },
         date: text => moment.tz(text, this.timezone)
       }
     });
@@ -32,7 +37,13 @@ export default class Appointment extends MindbodyBase {
           if (result.StaffMembers && result.StaffMembers.Staff) {
             result.StaffMembers.Staff.forEach((staff) => {
               if (staff.Appointments && staff.Appointments.Appointment) {
-                staff.Appointments.Appointment.forEach(appt => appointments.push(appt));
+                staff.Appointments.Appointment.forEach((appt) => {
+                  appointments.push({
+                    ...appt,
+                    StartDateTimeRAW: appt.StartDateTime,
+                    StartDateTime: moment.tz(appt.StartDateTime, this.timezone)
+                  });
+                });
               }
             });
           }
