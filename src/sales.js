@@ -123,14 +123,14 @@ export default class Sales extends MindbodyBase {
       console.log('Running SalesWeb from:', form.requiredtxtDateStart, 'to:', form.requiredtxtDateEnd);
       this.get('https://clients.mindbodyonline.com/Report/Sales/Sales')
         .then((rsp) => {
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           $('#optSaleLoc option').each((i, el) => form.optSaleLoc.push($(el).attr('value')));
           $('#optHomeStudio option').each((i, el) => form.optHomeStudio.push($(el).attr('value')));
           $('#optPayMethod option').each((i, el) => form.optPayMethod.push($(el).attr('value')));
           return this.get('https://clients.mindbodyonline.com/Ajax/GetCategoriesByType');
         })
         .then((rsp) => {
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           $('option').each((i, el) => {
             form.optCategory.push($(el).attr('value'));
           });
@@ -138,7 +138,7 @@ export default class Sales extends MindbodyBase {
         })
         .then((rsp) => {
           const sales = {};
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           $('table.result-table').each((i, el) => {
             parseTable($, $(el), sales);
           });
@@ -174,14 +174,14 @@ export default class Sales extends MindbodyBase {
       console.log('Running SalesByRep from:', form.requiredtxtDateStart, 'to:', form.requiredtxtDateEnd);
       this.get('https://clients.mindbodyonline.com/Report/Sales/SalesByRep')
         .then((rsp) => {
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           $('#optSaleLoc option').each((i, el) => {
             form.optSaleLoc.push($(el).attr('value'));
           });
           return this.get('https://clients.mindbodyonline.com/Ajax/GetCategoriesByType');
         })
         .then((rsp) => {
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           $('option').each((i, el) => {
             form.optCategory.push($(el).attr('value'));
           });
@@ -189,7 +189,7 @@ export default class Sales extends MindbodyBase {
         })
         .then((rsp) => {
           const sales = {};
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
 
           $('table.result-table').each((i, elem) => {
             const table = $(elem);
@@ -248,7 +248,7 @@ export default class Sales extends MindbodyBase {
       this.get(`https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_voidedit.asp?saleno=${saleId}`)
         .then((rsp) => {
           const units = [];
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
 
           $('table.adyenClass tr').each((_, tr) => {
             const tds = $(tr).children('td').map((__, td) => $(td));

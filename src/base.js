@@ -1,62 +1,59 @@
 import soap from 'soap';
-import request from 'request-promise-native';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import tough from 'tough-cookie';
 import { RateLimiter } from 'limiter';
+import FormData from 'form-data';
 
+puppeteer.use(StealthPlugin());
 const limiter = new RateLimiter(1, 500);
+const axios = require('axios').default;
+const axiosCookieJarSupport = require('axios-cookiejar-support').default;
+
+const ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36';
 
 const MB_API = 'https://api.mindbodyonline.com/0_5_1';
 
-function hasCaptcha(rsp) {
-  return rsp.body.includes('distil_r_captcha');
+function removeTokens(count, limiter) {
+  return new Promise((resolve, reject) => {
+    limiter.removeTokens(count, (err, remainingRequests) => {
+      if (err) return reject(err);
+      resolve(remainingRequests);
+    });
+  });
 }
 
 function loginRequired(rsp) {
-  if (rsp.body.startsWith('{')) {
-    const json = JSON.parse(rsp.body);
-    if (json.sessionExpired) return true;
+  if (typeof (rsp.data) == 'object') {
+    return rsp.data.sessionExpired;
   }
-  if (rsp.req.path.startsWith('/launch') || rsp.req.path.startsWith('/Error')) return true;
-  if (!rsp.body) return false;
+  if (rsp.request.path.startsWith('/launch') || rsp.request.path.startsWith('/Error')) return true;
+  if (!rsp.data) return false;
   return (
-    rsp.body.includes('MINDBODY: Login') ||
-    rsp.body.includes('MINDBODY Status') ||
-    rsp.body.includes('.resetSession();')
+    rsp.data.includes('MINDBODY: Login') ||
+    rsp.data.includes('MINDBODY Status') ||
+    rsp.data.includes('.resetSession();') ||
+    rsp.data.includes('launchHome()')
   );
 }
 
 export default class MindBodyBase {
-  constructor(serviceName, siteId, username, password, sourceName, apiToken, cookieJar) {
+  constructor(serviceName, siteId, username, password, sourceName, apiToken, jar) {
     this.apiToken = apiToken;
     this.sourceName = sourceName;
     this.siteId = siteId;
     this.serviceWSDL = `${MB_API}/${serviceName}Service.asmx?wsdl`;
-
-    if (cookieJar) {
-      this.reqJar = request.jar(cookieJar);
-    } else {
-      this.reqJar = request.jar();
-    }
-
     this.username = username;
     this.password = password;
-  }
-
-  initRequestOptions(method, url, form = null) {
-    const options = {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.1'
-      },
-      resolveWithFullResponse: true,
-      jar: this.reqJar,
-      gzip: 'true',
-      method,
-      uri: url,
-      followAllRedirects: true
-    };
-    if (form) {
-      options.form = form;
-    }
-    return options;
+    this.jar = jar;
+    this.axios = axios.create({
+      jar,
+      withCredentials: true,
+      headers: { 'User-Agent': ua }
+    });
+    // Set directly after wrapping instance.
+    axiosCookieJarSupport(this.axios);
+    this.axios.defaults.jar = this.jar;
   }
 
   soapReq(reqName, resultName, req) {
@@ -108,84 +105,91 @@ export default class MindBodyBase {
     };
   }
 
-  login() {
-    console.log(`Logging into Mindbody site ${this.siteId}`);
-
-    return new Promise((resolve, reject) => {
-      let options = this.initRequestOptions('GET', `https://clients.mindbodyonline.com/launch/site?id=${this.siteId}`);
-
-      // First load home page to get new cookies
-      request(options)
-        .then(() => {
-          // Send Login Creds
-          options = this.initRequestOptions('POST', `https://clients.mindbodyonline.com/Login?studioID=${this.siteId}&isLibAsync=true&isJson=true`);
-          options.form = {
-            launchLogin: true,
-            requiredtxtUserName: this.username,
-            requiredTxtPassword: this.password,
-            optRememberMe: 'on'
-          };
-          return request(options);
-        })
-        .then(() => {
-          // For some reason you need to post
-          options = this.initRequestOptions('POST', `https://clients.mindbodyonline.com/classic/admhome?studioid=${this.siteId}`);
-          options.form = {
-            justloggedin: 'true'
-          };
-          return request(options);
-        })
-        .then((rsp) => {
-          // Check if we actually logged in
-          if (hasCaptcha(rsp)) return reject(new Error(`Captcha detected during login for site ${this.siteId}`));
-          if (loginRequired(rsp)) return reject(new Error(`Unable to login to site ${this.siteId}`));
-
-          if (rsp.statusCode !== 200) {
-            return reject(new Error(`Unable to login to site ${this.siteId}, invalid status code ${rsp.statusCode}`));
-          }
-          console.log('Logged into site');
-          resolve();
-        })
-        .catch(err => reject(err));
+  async refreshCookies() {
+    await this.jar.removeAllCookiesSync();
+    const browser = await puppeteer.launch({
+      headless: true,
+      ignoreDefaultArgs: ['--enable-automation'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
+    const page = await browser.newPage();
+    await page.setViewport({
+      width: 1600,
+      height: 1200
+    });
+    await page.setUserAgent(ua);
+    try {
+      console.log(`Logging into Mindbody site ${this.siteId}`);
+      const url = `https://clients.mindbodyonline.com/launch/site?id=${this.siteId}`;
+      await page.goto(url);
+      await page.waitForNavigation({ waitUntil: 'networkidle2' });
+      console.log(`Entering Creds`);
+      await page.waitForSelector('#username');
+      await page.focus('#username');
+      await page.keyboard.type(this.username);
+      await page.waitForSelector('#password');
+      await page.focus('#password');
+      await page.keyboard.type(this.password);
+      const button = await page.waitForXPath('//span[text() = "Sign In"]');
+      await page.evaluate(ele => ele.click(), button);
+      await page.waitForXPath('//*[text() = "Sign Out"]');
+
+      const cookies = await page._client.send('Network.getAllCookies');
+      cookies.cookies.forEach((cookie) => {
+        if (cookie.domain === 'clients.mindbodyonline.com') {
+          const newCookie = tough.Cookie.fromJSON({
+            'key': cookie.name,
+            'value': cookie.value,
+            'domain': cookie.domain,
+            'path': cookie.path,
+            'secure': cookie.secure,
+            'httpOnly': cookie.httpOnly,
+            'hostOnly': cookie.secure,
+            'sameSite': cookie.sameSite
+          });
+          this.jar.setCookieSync(newCookie, 'https://clients.mindbodyonline.com/');
+        }
+      });
+    } finally {
+      await browser.close();
+    }
   }
 
-  request(options, autoLogin = true) {
-    return new Promise((resolve, reject) => {
-      limiter.removeTokens(1, () => {
-        request(options)
-          .then((rsp) => {
-            if (hasCaptcha(rsp)) return reject(new Error('Captcha detected, consider using cookies to persist logged in state'));
-            if (rsp.statusCode >= 300 && rsp.statusCode <= 199) {
-              return reject(new Error(`Invalid response ${rsp.statusCode}`));
-            }
-            if (loginRequired(rsp)) {
-              if (autoLogin) {
-                this.login()
-                  .then(() => this.request(options, false))
-                  .then(rsp2 => resolve(rsp2))
-                  .catch(err => reject(err));
-              } else {
-                reject(new Error('We thought we logged in but was returned to login screen on 2nd attempt'));
-              }
-            } else {
-              resolve(rsp);
-            }
-          })
-          .catch((err) => {
-            reject(err);
-          });
-      });
-    });
+  async request(config) {
+    await removeTokens(1, limiter);
+    let rsp = await this.axios(config);
+
+    if (loginRequired(rsp)) {
+      await this.refreshCookies();
+    } else {
+      return rsp;
+    }
+
+    rsp = await this.axios(config);
+
+    if (loginRequired(rsp)) {
+      throw new Error('We thought we logged in but was returned to login screen on 2nd attempt');
+    }
+
+    return rsp;
   }
 
   get(url) {
-    const options = this.initRequestOptions('GET', url);
-    return this.request(options);
+    return this.request({ url });
   }
 
-  post(url, form) {
-    const options = this.initRequestOptions('POST', url, form);
-    return this.request(options);
+  post(url, data) {
+    const form = new FormData();
+    Object.entries(data).forEach((k, v) => {
+      form.append(k, v);
+    });
+
+    return this.request({
+      method: 'post',
+      url,
+      data: form,
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
   }
+
 }

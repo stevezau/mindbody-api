@@ -7,13 +7,13 @@ const cli = new MBClients(config.id, config.username, config.password, config.so
 
 describe('MindBody Clients', () => {
   it('should return 10 clients', () => {
-    cli.getClients(null, null, 0, 10).then(({ clients }) => {
+    cli.getClients('', [], 0, 10).then(({ clients }) => {
       assert.lengthOf(clients, 10);
     });
   });
 
   it('should return second page 10 clients', () => {
-    cli.getClients(null, null, 1, 10).then(({ clients }) => {
+    cli.getClients(null, [], 1, 10).then(({ clients }) => {
       assert.lengthOf(clients, 10);
     });
   });
@@ -43,7 +43,7 @@ describe('MindBody Clients', () => {
   });
 
   it('should return search demo andrew', (done) => {
-    cli.getClients('demo andrew', null, 0, 10)
+    cli.getClients('demo andrew', [], 0, 10)
       .then(({ clients }) => {
         assert.lengthOf(clients, 1);
         const client = clients[0];

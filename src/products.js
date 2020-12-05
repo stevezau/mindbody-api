@@ -14,7 +14,7 @@ export default class Products extends MindbodyBase {
       this.get('https://clients.mindbodyonline.com/ASP/adm/adm_rpt_inv.asp')
         .then((rsp) => {
           const categories = [];
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           $('select[name=optCat] option').each((i, elem) => {
             if ($(elem).attr('value') !== '0') {
               categories.push({
@@ -33,7 +33,7 @@ export default class Products extends MindbodyBase {
     return new Promise((resolve, reject) => {
       this.get(`https://clients.mindbodyonline.com/productmanagement/editproduct?descriptionId=${productId}`)
         .then((rsp) => {
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           const supplier = $('#SelectedProductSuppliersId option:selected');
           const revenueCategory = $('#PrimaryCategoryId option:selected');
           resolve({
@@ -77,13 +77,13 @@ export default class Products extends MindbodyBase {
     return new Promise((resolve, reject) => {
       this.get('https://clients.mindbodyonline.com/ASP/adm/adm_rpt_inv.asp')
         .then((rsp) => {
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           form.CSRFToken = $('input[name=CSRFToken]').attr('value');
           return this.post('https://clients.mindbodyonline.com/ASP/adm/adm_rpt_inv.asp', form);
         })
         .then((rsp) => {
           const products = [];
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           $('#resultsTable1 .rows').each((i, elem) => {
             const tds = $(elem).find('td');
             const match = prodIdRegex.exec($(tds[2]).find('a').attr('href'));
@@ -119,7 +119,7 @@ export default class Products extends MindbodyBase {
       this.get('https://clients.mindbodyonline.com/asp/adm/adm_tlbx_prod_sup.asp')
         .then((rsp) => {
           const suppliers = [];
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           $('select[name=optSupplier] option').each((i, elem) => {
             const supplierId = Number($(elem).attr('value'));
             if (supplierId !== 0) {

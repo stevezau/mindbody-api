@@ -53,7 +53,7 @@ export default class Appointment extends MindbodyBase {
     });
   }
 
-  getAppointmentsWeb(fromDate, toDate) {
+  async getAppointmentsWeb(fromDate, toDate) {
     const startTZ = moment.tz(fromDate, this.timezone);
     const endTZ = moment.tz(toDate, this.timezone);
     const startUTC = moment.tz(startTZ.format('YYYY-MM-DDTHH:mm:ss'), 'UTC').startOf('day');
@@ -62,19 +62,14 @@ export default class Appointment extends MindbodyBase {
     const start = startUTC.unix();
     const end = endUTC.unix();
 
-    return new Promise((resolve, reject) => {
-      this.get(`https://clients.mindbodyonline.com/DailyStaffSchedule/DailyStaffSchedules?studioID=${this.siteId}&isLibAsync=true&isJson=true&StartDate=${start}&EndDate=${end}&View=week&TabID=9`)
-        .then((rsp) => {
-          const data = JSON.parse(rsp.body);
-          const appointments = [];
-          data.json.forEach((staff) => {
-            if (staff.Appointments) {
-              staff.Appointments.forEach(appt => appointments.push(appt));
-            }
-          });
-          resolve({ appointments });
-        })
-        .catch(err => reject(err));
+    const rsp = await this.get(`https://clients.mindbodyonline.com/DailyStaffSchedule/DailyStaffSchedules?studioID=${this.siteId}&isLibAsync=true&isJson=true&StartDate=${start}&EndDate=${end}&View=week&TabID=9`);
+    const appointments = [];
+    rsp.data.json.forEach((staff) => {
+      if (staff.Appointments) {
+        staff.Appointments.forEach(appt => appointments.push(appt));
+      }
     });
+
+    return { appointments };
   }
 }

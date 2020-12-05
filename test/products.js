@@ -11,7 +11,7 @@ describe('MindBody Products', () => {
   it('should return products categories', (done) => {
     cli.getCategories()
       .then(({ categories }) => {
-        assert.lengthOf(categories, 5);
+        assert.isAbove(categories.length, 3);
         expect(categories[0]).to.deep.equal({ id: 99999, name: 'Not Assigned' });
         done();
       })
@@ -37,7 +37,7 @@ describe('MindBody Products', () => {
   });
 
   it('should get all products for category 32', (done) => {
-    cli.getAllProducts(32, new Date(Date.now()))
+    cli.getAllProducts({id: 32}, new Date(Date.now()))
       .then(({ products }) => {
         assert.isAbove(products.length, 10);
         expect(products[0]).to.deep.equal({

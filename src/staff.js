@@ -33,7 +33,7 @@ export default class Staff extends MindbodyBase {
       this.get('https://clients.mindbodyonline.com/Staff/Manage')
         .then((rsp) => {
           const staffIds = [];
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           $('#inactiveStaffTable > tbody > tr').each((i, tr) => {
             const tds = $(tr).children('td').map((_, td) => $(td));
             const staffHref = tds[0].find('a').attr('href');
@@ -66,7 +66,7 @@ export default class Staff extends MindbodyBase {
     return new Promise((resolve, reject) => {
       this.get(`https://clients.mindbodyonline.com/asp/adm/adm_trn_e.asp?trnID=${staffID}`)
         .then((rsp) => {
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           const firstName = $('#fauxFirst_Name').attr('value');
           const lastName = $('#fauxLast_Name').attr('value');
           const displayName = $('#txtDisplayName').attr('value');
@@ -156,12 +156,12 @@ export default class Staff extends MindbodyBase {
     return new Promise((resolve, reject) => {
       this.get('https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_timeclock_list.asp')
         .then((rsp) => {
-          const $ = cheerio.load(rsp.body);
+          const $ = cheerio.load(rsp.data);
           form.CSRFToken = $('input[name=CSRFToken]').attr('value');
           return this.post('https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_timeclock_list.asp', form);
         })
         .then((rsp) => {
-          const timesheets = this.parseTSTable(rsp.body);
+          const timesheets = this.parseTSTable(rsp.data);
           resolve(timesheets);
         })
         .catch(err => reject(err));

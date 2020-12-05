@@ -44,7 +44,7 @@ export default class Services extends MindbodyBase {
       this.get(`https://clients.mindbodyonline.com/AddEditPricingOption/Edit?Id=${service.ID}`)
         .then((rsp) => {
           console.log(`Enriching ${service.Name}:${service.ID}`);
-          const serviceJSON = JSON.parse(serviceRegex.exec(rsp.body)[1].replace(/\\/g, ''));
+          const serviceJSON = JSON.parse(serviceRegex.exec(rsp.data)[1].replace(/\\/g, ''));
 
           service.AppointmentType = {}; // eslint-disable-line
           if (serviceJSON.SelectedAppointmentTypes) {

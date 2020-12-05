@@ -16,7 +16,7 @@ export default class Sites extends MindbodyBase {
             // Enrich with timezone
             this.post('https://clients.mindbodyonline.com/BusinessAndConnectLocations/BusinessAndLocationData')
               .then((rsp) => {
-                resolve(Object.assign(result.Sites.Site[0], JSON.parse(rsp.body)));
+                resolve(Object.assign(result.Sites.Site[0], JSON.parse(rsp.data)));
               })
               .catch(err => reject(err));
           } else {
