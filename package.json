@@ -1,6 +1,6 @@
 {
   "name": "mindbody-api",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Interface to Mindbody",
   "main": "./dist/index.js",
   "scripts": {
@@ -46,7 +46,7 @@
     "form-data": "^3.0.0",
     "limiter": "^1.1.3",
     "moment": "^2.22.2",
-    "moment-timezone": "^0.5.23",
+    "moment-timezone": "^0.5.32",
     "puppeteer": "^5.5.0",
     "puppeteer-extra": "^3.1.15",
     "puppeteer-extra-plugin-stealth": "^2.6.5",
