@@ -43,7 +43,7 @@ export default class Services extends MindbodyBase {
 
     const serviceCategory = findById(serviceJSON, 'AvailableServiceCategories', 'ServiceCategoryId', serviceJSON.SelectedServiceCategory);
     service.ServiceCategory = { // eslint-disable-line
-      Name: serviceCategory.ServiceCategoryDisplayName,
+      Name: decodeURIComponent(JSON.parse(`"${serviceCategory.ServiceCategoryDisplayName.replace('u00', '\\u00')}"`)),
       ID: serviceCategory.ServiceCategoryId
     };
 

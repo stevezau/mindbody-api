@@ -44,7 +44,6 @@
     "axios": "^0.21.0",
     "axios-cookiejar-support": "^1.0.1",
     "cheerio": "^1.0.0-rc.2",
-    "form-data": "^3.0.0",
     "limiter": "^1.1.3",
     "moment": "^2.22.2",
     "moment-timezone": "^0.5.32",

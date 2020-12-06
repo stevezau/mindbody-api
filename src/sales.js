@@ -190,8 +190,8 @@ export default class Sales extends MindbodyBase {
     const data = await this.apiRequest('sale/sales', 'Sales', {
       method: 'get',
       params: {
-        StartSaleDateTime: fromDate.toISOString(),
-        EndSaleDateTime: toDate.toISOString()
+        StartSaleDateTime: fromDate.format('YYYY-MM-DDTHH:mm:ss'),
+        EndSaleDateTime: toDate.format('YYYY-MM-DDTHH:mm:ss')
       }
     });
 

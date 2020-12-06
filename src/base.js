@@ -1,9 +1,8 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { Mutex, Semaphore, withTimeout } from 'async-mutex';
+import { Mutex } from 'async-mutex';
 import tough from 'tough-cookie';
 import { RateLimiter } from 'limiter';
-import FormData from 'form-data';
 import qs from 'qs';
 
 puppeteer.use(StealthPlugin());
@@ -30,13 +29,14 @@ function loginRequired(rsp) {
   if (typeof (rsp.data) == 'object') {
     return rsp.data.sessionExpired;
   }
-  if (rsp.request.path.startsWith('/launch') || rsp.request.path.startsWith('/Error')) return true;
+  if (rsp.request.path.startsWith('/launch') || rsp.request.path.startsWith('/Error') || rsp.request.path.startsWith('/?err')) return true;
   if (!rsp.data) return false;
   return (
     rsp.data.includes('MINDBODY: Login') ||
     rsp.data.includes('MINDBODY Status') ||
     rsp.data.includes('.resetSession();') ||
-    rsp.data.includes('launchHome()')
+    rsp.data.includes('launchHome()') ||
+    rsp.data.includes('Your username is not authorized to view this screen')
   );
 }
 
@@ -114,7 +114,7 @@ export default class MindBodyBase {
             'hostOnly': cookie.secure,
             'sameSite': cookie.sameSite
           });
-          this.jar.setCookieSync(newCookie, 'https://clients.mindbodyonline.com/');
+          this.jar.setCookieSync(newCookie.toString(), 'https://clients.mindbodyonline.com/');
         }
       });
       this.successAuth = true;

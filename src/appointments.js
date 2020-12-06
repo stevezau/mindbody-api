@@ -8,15 +8,25 @@ export default class Appointment extends MindbodyBase {
   }
 
   async getAppointmentsAPI(fromDate, toDate, staffIDs, fields = null) {
+    const sessionTypes = await this.apiRequest('site/sessiontypes', 'SessionTypes', {
+      method: 'get',
+    });
+
+    const sessionsMap = sessionTypes.reduce((accum, s) => {
+      accum[s.Id] = s;
+      return accum;
+    }, {});
+
     const staff = await this.apiRequest('appointment/scheduleitems', 'StaffMembers', {
       method: 'get',
       params: {
         StaffIDs: (staffIDs || [0]),
         IgnorePrepFinishTimes: false,
-        StartDate: fromDate,
-        EndDate: toDate
+        StartDate: fromDate.format('YYYY-MM-DDTHH:mm:ss'),
+        EndDate: toDate.format('YYYY-MM-DDTHH:mm:ss')
       }
     });
+
 
     const appointments = [];
 
@@ -24,12 +34,18 @@ export default class Appointment extends MindbodyBase {
       if (staff.Appointments) {
         try {
           staff.Appointments.forEach((appt) => {
+            const staffName = `${staff.FirstName} ${staff.LastName}`.trim();
             appointments.push({
               ...appt,
               StartDateTimeRAW: appt.StartDateTime,
               StartDateTime: moment.tz(appt.StartDateTime, this.timezone),
               EndDateTimeRAW: appt.EndDateTime,
-              EndDateTime: moment.tz(appt.EndDateTime, this.timezone)
+              EndDateTime: moment.tz(appt.EndDateTime, this.timezone),
+              staff: {
+                Id: appt.StaffId,
+                name: staffName
+              },
+              session: sessionsMap[appt.SessionTypeId] || {},
             });
           });
         } catch (err) {

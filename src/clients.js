@@ -1,3 +1,4 @@
+import moment from 'moment-timezone';
 import MindbodyBase from './base';
 
 export default class Clients extends MindbodyBase {
@@ -9,13 +10,16 @@ export default class Clients extends MindbodyBase {
   async getClient(clientId) {
     const clients = await this.getClients(null, [clientId]);
     if (clients.length === 1) {
-      return clients[0];
+      return {
+        ...clients[0],
+        CreationDate: moment.tz(c.CreationDate, this.timezone),
+      };
     }
   }
 
 
   async getClients(searchText = '', clientIds = [], lastModifiedDate = null) {
-    return await this.apiRequest('client/clients', 'Clients', {
+    const clients = await this.apiRequest('client/clients', 'Clients', {
       method: 'get',
       params: {
         ClientIDs: (clientIds || [0]),
@@ -23,5 +27,11 @@ export default class Clients extends MindbodyBase {
         SearchText: searchText
       }
     });
+    return clients.map(c => {
+      return {
+        ...c,
+        CreationDate: moment.tz(c.CreationDate, this.timezone),
+      }
+    })
   }
 }
