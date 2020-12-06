@@ -31,6 +31,11 @@ function loginRequired(rsp) {
   if (rsp.request.path.startsWith('/launch') || rsp.request.path.startsWith('/Error') || rsp.request.path.startsWith('/?err')) return true;
   if (!rsp.data) return false;
 
+  // refresh token
+  if (!rsp.data.includes('window.UserToken') && rsp.data.includes('Your username is not authorized to view this screen')) {
+    return true;
+  }
+
   if (rsp.data.includes('window.UserToken')) {
     return false;
   }
@@ -68,6 +73,7 @@ export default class MindBodyBase {
 
   async refreshCookies() {
     let browser = null;
+    let page = null;
 
     console.log(`Waiting for access to puppteer for site ${this.siteId}`);
     const release = await this.mutux.acquire();
@@ -78,7 +84,7 @@ export default class MindBodyBase {
       return;
     }
 
-    try {
+    async function setupBrowser() {
       if (process.env.BROWSERLESS_WSS) {
         browser = await puppeteer.connect({
           browserWSEndpoint: process.env.BROWSERLESS_WSS
@@ -91,14 +97,16 @@ export default class MindBodyBase {
         });
       }
 
-      const page = await browser.newPage();
+      page = await browser.newPage();
       await page.setViewport({
         width: 1600,
         height: 1200
       });
       await page.setUserAgent(ua);
+    }
 
-      // Set current cookies in puppeteer.
+    try {
+      await setupBrowser();
       await page.setCookie(...this.jar.getCookiesSync('https://clients.mindbodyonline.com').map(c => c.toJSON()).map(c => ({
         name: c.key,
         value: c.value || '',
@@ -109,6 +117,19 @@ export default class MindBodyBase {
         sameSite: c.sameSite,
         secure: c.hostOnly
       })));
+
+      // First let's check if we just need to refresh the user token
+      await page.goto('https://clients.mindbodyonline.com/mainappointments/index?tabid=9');
+      const currentUrl = await page.url();
+      if (currentUrl.includes('mainappointments')) {
+        // Check if we need to log out due to invalid refresh token
+        const expired = await page.$x('//*[text()[contains(.,\'We were unable to complete your request\')]]');
+        if (expired.length) {
+          console.log('refresh token issue, create fresh browser');
+          await browser.close();
+          await setupBrowser();
+        }
+      }
 
       console.log(`Logging into Mindbody site ${this.siteId}`);
       const url = `https://clients.mindbodyonline.com/launch/site?id=${this.siteId}`;
@@ -128,9 +149,6 @@ export default class MindBodyBase {
         const button = await page.waitForXPath('//span[text() = "Sign In"]');
         await page.evaluate(ele => ele.click(), button);
         await page.waitForXPath('//*[text() = "Sign Out"]');
-      } else {
-        // Should force new refresh/auth token
-        await page.goto('https://clients.mindbodyonline.com/mainappointments/index?tabid=9');
       }
 
       const cookies = await page._client.send('Network.getAllCookies');
