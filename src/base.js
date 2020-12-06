@@ -23,7 +23,7 @@ function removeTokens(count, limiter) {
   });
 }
 
-async function loginRequired(rsp) {
+function loginRequired(rsp) {
   if (typeof (rsp.data) == 'object') {
     return rsp.data.sessionExpired;
   }
@@ -124,7 +124,6 @@ export default class MindBodyBase {
       } else {
         // Should force new refresh/auth token
         await page.goto('https://clients.mindbodyonline.com/mainappointments/index?tabid=9');
-        await page.waitForNavigation({ waitUntil: 'networkidle2' });
       }
 
       const cookies = await page._client.send('Network.getAllCookies');
