@@ -30,6 +30,10 @@ async function loginRequired(rsp) {
   if (rsp.request.path.startsWith('/launch') || rsp.request.path.startsWith('/Error') || rsp.request.path.startsWith('/?err')) return true;
   if (!rsp.data) return false;
 
+  if (rsp.data.includes('window.UserToken')) {
+    return false;
+  }
+
   return (
     rsp.data.includes('MINDBODY: Login') ||
     rsp.data.includes('MINDBODY Status') ||
