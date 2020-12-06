@@ -6,7 +6,7 @@
   "scripts": {
     "build": "webpack",
     "lint": "jshint src",
-    "test": "mocha --timeout 15000 --compilers js:babel-core/register",
+    "test": "mocha --timeout 60000 --compilers js:@babel/register",
     "prepare": "npm run build",
     "release": "npmpub"
   },
@@ -40,6 +40,7 @@
     "webpack-node-externals": "^1.7.2"
   },
   "dependencies": {
+    "async-mutex": "^0.2.6",
     "axios": "^0.21.0",
     "axios-cookiejar-support": "^1.0.1",
     "cheerio": "^1.0.0-rc.2",
@@ -50,8 +51,9 @@
     "puppeteer": "^5.5.0",
     "puppeteer-extra": "^3.1.15",
     "puppeteer-extra-plugin-stealth": "^2.6.5",
-    "soap": "^0.23.0",
+    "qs": "^6.9.4",
     "source-map-support": "^0.5.19",
-    "tough-cookie": "^4.0.0"
+    "tough-cookie": "^4.0.0",
+    "webAxios": "^0.21.0"
   }
 }

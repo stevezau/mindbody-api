@@ -6,11 +6,11 @@ const assert = chai.assert;
 const cli = new MBAppts(config.id, config.username, config.password, config.sourceName, config.apiToken, config.jar);
 
 describe('MindBody Appointments', () => {
-  it('should return appointments soap', (done) => {
+  it('should return appointments api', (done) => {
     const toDate = new Date(Date.now());
     const fromDate = new Date(Date.now() - 2.592e+9); // minus 30 days
-    cli.getAppointmentsSOAP(fromDate, toDate)
-      .then(({ appointments }) => {
+    cli.getAppointmentsAPI(fromDate, toDate)
+      .then((appointments) => {
         assert.isAbove(appointments.length, 1);
         done();
       })
@@ -21,7 +21,7 @@ describe('MindBody Appointments', () => {
     const toDate = new Date(Date.now());
     const fromDate = new Date(Date.now() - 2.592e+9); // minus 30 days
     cli.getAppointmentsWeb(fromDate, toDate)
-      .then(({ appointments }) => {
+      .then((appointments) => {
         assert.isAbove(appointments.length, 1);
         done();
       })

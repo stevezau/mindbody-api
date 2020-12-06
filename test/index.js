@@ -10,11 +10,11 @@ chai.use(chaiAsPromised);
 chai.should();
 
 export default {
-  'id': -99,
-  //id: 269087,
+  //'id': -99,
+  id: process.env.MB_SITE,
   sourceName: process.env.MB_SOURCE_NAME,
   apiToken: process.env.MB_API_TOKEN,
-  'username': 'Siteowner',
-  'password': 'apitest1234',
+  username: process.env.MB_USERNAME,
+  password: process.env.MB_PASSWORD,
   jar: new CookieJar(new FileCookieStore('./cookies.json'))
 };

@@ -1,18 +1,21 @@
-import soap from 'soap';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { Mutex, Semaphore, withTimeout } from 'async-mutex';
 import tough from 'tough-cookie';
 import { RateLimiter } from 'limiter';
 import FormData from 'form-data';
+import qs from 'qs';
 
 puppeteer.use(StealthPlugin());
 const limiter = new RateLimiter(1, 500);
 const axios = require('axios').default;
 const axiosCookieJarSupport = require('axios-cookiejar-support').default;
 
+const mutex = new Mutex();
+
 const ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36';
 
-const MB_API = 'https://api.mindbodyonline.com/0_5_1';
+const v6Api = 'https://api.mindbodyonline.com/public/v6';
 
 function removeTokens(count, limiter) {
   return new Promise((resolve, reject) => {
@@ -38,87 +41,51 @@ function loginRequired(rsp) {
 }
 
 export default class MindBodyBase {
-  constructor(serviceName, siteId, username, password, sourceName, apiToken, jar) {
-    this.apiToken = apiToken;
+  constructor(serviceName, siteId, username, password, sourceName, apiKey, jar) {
+    this.apiKey = apiKey;
     this.sourceName = sourceName;
     this.siteId = siteId;
-    this.serviceWSDL = `${MB_API}/${serviceName}Service.asmx?wsdl`;
     this.username = username;
     this.password = password;
     this.jar = jar;
-    this.axios = axios.create({
+    this.successAuth = false;
+    this.webAxios = axios.create({
       jar,
       withCredentials: true,
       headers: { 'User-Agent': ua }
     });
     // Set directly after wrapping instance.
-    axiosCookieJarSupport(this.axios);
-    this.axios.defaults.jar = this.jar;
-  }
+    axiosCookieJarSupport(this.webAxios);
+    this.webAxios.defaults.jar = this.jar;
 
-  soapReq(reqName, resultName, req) {
-    return new Promise((resolve, reject) => {
-      this.soapClient()
-        .then((client) => {
-          client[reqName]({ Request: req }, (err, result) => {
-            if (err) {
-              return reject(err);
-            }
-            const resultObj = result[resultName];
-            if (!resultObj) {
-              return reject(new Error(`Invalid result, missing ${resultName}`));
-            }
-            if (resultObj.ErrorCode !== 200) {
-              return reject(new Error(`Error ${resultObj.ErrorCode} ${resultObj.Message}`));
-            }
-            resolve(resultObj);
-          });
-        })
-        .catch(err => reject(err));
-    });
-  }
-
-  soapClient(options = {}) {
-    return new Promise((resolve, reject) => {
-      soap.createClient(this.serviceWSDL, options, (err, client) => {
-        if (err) {
-          reject(err);
-        }
-        resolve(client);
-      });
-    });
-  }
-
-  initSoapRequest() {
-    return {
-      SourceCredentials: {
-        SourceName: this.sourceName,
-        Password: this.apiToken,
-        SiteIDs: [{ int: this.siteId }]
-      },
-      UserCredentials: {
-        Username: this.username,
-        Password: this.password,
-        SiteIDs: [{ int: this.siteId }]
-      },
-      XMLDetail: 'Bare'
-    };
+    this.apiAxios = null;
   }
 
   async refreshCookies() {
-    await this.jar.removeAllCookiesSync();
-    const browser = await puppeteer.launch({
-      headless: true,
-      ignoreDefaultArgs: ['--enable-automation'],
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    const page = await browser.newPage();
-    await page.setViewport({
-      width: 1600,
-      height: 1200
-    });
-    await page.setUserAgent(ua);
+    let browser = null;
+    console.log(`Waiting for access to puppteer for site ${this.siteId}`);
+    const release = await mutex.acquire();
+
+    if (this.successAuth) {
+      console.log(`Got access to puppeteer for site ${this.siteId} but already authed so ignoring`);
+      return;
+    }
+
+    console.log(`Got access to puppeteer for site ${this.siteId}`);
     try {
+      await this.jar.removeAllCookiesSync();
+      browser = await puppeteer.launch({
+        headless: true,
+        ignoreDefaultArgs: ['--enable-automation'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+      const page = await browser.newPage();
+      await page.setViewport({
+        width: 1600,
+        height: 1200
+      });
+      await page.setUserAgent(ua);
+
       console.log(`Logging into Mindbody site ${this.siteId}`);
       const url = `https://clients.mindbodyonline.com/launch/site?id=${this.siteId}`;
       await page.goto(url);
@@ -150,22 +117,26 @@ export default class MindBodyBase {
           this.jar.setCookieSync(newCookie, 'https://clients.mindbodyonline.com/');
         }
       });
+      this.successAuth = true;
     } finally {
-      await browser.close();
+      if (browser) {
+        await browser.close();
+      }
+      console.log(`Release access to puppteer for site ${this.siteId}`);
+      release();
     }
   }
 
-  async request(config) {
+  async webRequest(config) {
     await removeTokens(1, limiter);
-    let rsp = await this.axios(config);
-
+    let rsp = await this.webAxios(config);
     if (loginRequired(rsp)) {
       await this.refreshCookies();
     } else {
       return rsp;
     }
 
-    rsp = await this.axios(config);
+    rsp = await this.webAxios(config);
 
     if (loginRequired(rsp)) {
       throw new Error('We thought we logged in but was returned to login screen on 2nd attempt');
@@ -174,21 +145,84 @@ export default class MindBodyBase {
     return rsp;
   }
 
-  get(url) {
-    return this.request({ url });
+  async setupAPI() {
+    if (this.apiAxios) return;
+
+    let token = null;
+
+    const headers = {
+      'Api-Key': this.apiKey,
+      'SiteId': this.siteId,
+    };
+
+    // First get user Auth Token
+    try {
+      const rsp = await axios({
+        method: 'POST',
+        url: `${v6Api}/usertoken/issue`,
+        data: {
+          Username: this.username,
+          Password: this.password
+        },
+        headers
+      });
+      token = rsp.data.AccessToken;
+    } catch (err) {
+      throw new Error(`Unable to auth due to ${err}`);
+    }
+
+    this.apiAxios = axios.create({
+      headers: {
+        ...headers,
+        'authorization': token
+      }
+    });
   }
 
-  post(url, data) {
-    const form = new FormData();
-    Object.entries(data).forEach((k, v) => {
-      form.append(k, v);
-    });
+  async apiRequest(path, field, settings = {}) {
+    await this.setupAPI();
+    // handle pagination
+    let offset = 0;
 
-    return this.request({
+    const handlePagination = async () => {
+      const params = settings.params || {};
+      const rsp = await this.apiAxios({
+        ...settings,
+        url: `${v6Api}/${path}`,
+        params: {
+          offset,
+          limit: 200,
+          ...params,
+        }
+      });
+
+      const data = rsp.data[field];
+      const totalResults = rsp.data.PaginationResponse.TotalResults;
+      const currentSize = rsp.data.PaginationResponse.PageSize;
+      const requestedOffset = rsp.data.PaginationResponse.RequestedOffset;
+      const upToo = requestedOffset + currentSize;
+
+      if (totalResults > upToo) {
+        offset = upToo;
+        return data.concat(await handlePagination());
+      } else {
+        return data;
+      }
+    };
+
+    return await handlePagination();
+  }
+
+  webGet(url) {
+    return this.webRequest({ url });
+  }
+
+  webPost(url, data) {
+    return this.webRequest({
       method: 'post',
       url,
-      data: form,
-      headers: { 'Content-Type': 'multipart/form-data' }
+      data: qs.stringify(data),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
   }
 

@@ -6,10 +6,10 @@ const assert = chai.assert;
 const cli = new MBStaff(config.id, config.username, config.password, config.sourceName, config.apiToken, config.jar, null);
 
 describe('MindBody Staff', () => {
-  it('should return staff staff', (done) => {
+  it('should return staff', (done) => {
     cli.getStaff()
       .then((staff) => {
-        assert.lengthOf(staff, 2);
+        assert.isAbove(staff.length, 1);
         done();
       });
   });

@@ -2,55 +2,43 @@ import moment from 'moment-timezone';
 import MindbodyBase from './base';
 
 export default class Appointment extends MindbodyBase {
-  constructor(siteId, username, password, sourceName, apiToken, cookieJar, timezone) {
-    super('Appointment', siteId, username, password, sourceName, apiToken, cookieJar);
+  constructor(siteId, username, password, sourceName, apiKey, cookieJar, timezone) {
+    super('Appointment', siteId, username, password, sourceName, apiKey, cookieJar);
     this.timezone = timezone;
   }
 
-  soapClient() {
-    return super.soapClient({
-      customDeserializer: {
-        dateTime: (text, context) => {
-          if (context.name === 'StartDateTime') {
-            return text;
-          }
-          return moment.tz(text, this.timezone);
-        },
-        date: text => moment.tz(text, this.timezone)
+  async getAppointmentsAPI(fromDate, toDate, staffIDs, fields = null) {
+    const staff = await this.apiRequest('appointment/scheduleitems', 'StaffMembers', {
+      method: 'get',
+      params: {
+        StaffIDs: (staffIDs || [0]),
+        IgnorePrepFinishTimes: false,
+        StartDate: fromDate,
+        EndDate: toDate
       }
     });
-  }
 
-  getAppointmentsSOAP(fromDate, toDate, staffIDs, fields = null) {
-    const req = this.initSoapRequest();
-    req.XMLDetail = fields ? 'Basic' : 'Full';
-    req.StaffIDs = (staffIDs || [0]).map(value => ({ long: value }));
-    req.IgnorePrepFinishTimes = false;
-    req.Fields = (fields || []).map(value => ({ string: value }));
-    req.StartDate = moment(fromDate).format('YYYY-MM-DDTHH:mm:ss');
-    req.EndDate = moment(toDate).format('YYYY-MM-DDTHH:mm:ss');
+    const appointments = [];
 
-    return new Promise((resolve, reject) => {
-      this.soapReq('GetScheduleItems', 'GetScheduleItemsResult', req)
-        .then((result) => {
-          const appointments = [];
-          if (result.StaffMembers && result.StaffMembers.Staff) {
-            result.StaffMembers.Staff.forEach((staff) => {
-              if (staff.Appointments && staff.Appointments.Appointment) {
-                staff.Appointments.Appointment.forEach((appt) => {
-                  appointments.push({
-                    ...appt,
-                    StartDateTimeRAW: appt.StartDateTime,
-                    StartDateTime: moment.tz(appt.StartDateTime, this.timezone)
-                  });
-                });
-              }
+    staff.forEach(staff => {
+      if (staff.Appointments) {
+        try {
+          staff.Appointments.forEach((appt) => {
+            appointments.push({
+              ...appt,
+              StartDateTimeRAW: appt.StartDateTime,
+              StartDateTime: moment.tz(appt.StartDateTime, this.timezone),
+              EndDateTimeRAW: appt.EndDateTime,
+              EndDateTime: moment.tz(appt.EndDateTime, this.timezone)
             });
-          }
-          resolve({ appointments });
-        })
-        .catch(err => reject(err));
+          });
+        } catch (err) {
+          console.log(err);
+        }
+      }
     });
+
+    return appointments;
   }
 
   async getAppointmentsWeb(fromDate, toDate) {
@@ -62,14 +50,16 @@ export default class Appointment extends MindbodyBase {
     const start = startUTC.unix();
     const end = endUTC.unix();
 
-    const rsp = await this.get(`https://clients.mindbodyonline.com/DailyStaffSchedule/DailyStaffSchedules?studioID=${this.siteId}&isLibAsync=true&isJson=true&StartDate=${start}&EndDate=${end}&View=week&TabID=9`);
+    const rsp = await this.webGet(`https://clients.mindbodyonline.com/DailyStaffSchedule/DailyStaffSchedules?studioID=${this.siteId}&isLibAsync=true&isJson=true&StartDate=${start}&EndDate=${end}&View=week&TabID=9`);
     const appointments = [];
-    rsp.data.json.forEach((staff) => {
-      if (staff.Appointments) {
-        staff.Appointments.forEach(appt => appointments.push(appt));
-      }
-    });
+    if (rsp.data.json) {
+      rsp.data.json.forEach((staff) => {
+        if (staff.Appointments) {
+          staff.Appointments.forEach(appt => appointments.push(appt));
+        }
+      });
+    }
 
-    return { appointments };
+    return appointments;
   }
 }

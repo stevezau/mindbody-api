@@ -6,12 +6,10 @@ const assert = chai.assert;
 const cli = new MBSites(config.id, config.username, config.password, config.sourceName, config.apiToken, config.jar);
 
 describe('MindBody Sites', () => {
-  it('should return site -99', (done) => {
+  it('should return site', (done) => {
     cli.getSite()
       .then((site) => {
-        assert.equal(config.id, site.ID);
-        assert.equal(site.StudioName, 'API Sandbox Site');
-        assert.equal(config.id, site.ID);
+        assert.equal(config.id, site.Id);
         done();
       })
       .catch(err => done(err));

@@ -10,7 +10,7 @@ const expect = chai.expect;
 describe('MindBody Services', () => {
   it('should return services', (done) => {
     cli.getAllServices()
-      .then(({ services }) => {
+      .then((services) => {
         assert.lengthOf(services, 5);
         done();
       })
@@ -19,7 +19,7 @@ describe('MindBody Services', () => {
 
   it('should enrich services', (done) => {
     cli.getAllServices()
-      .then(({ services }) => cli.enrichService(services[0]))
+      .then((services) => cli.enrichService(services[0]))
       .then((service) => {
         done();
       })

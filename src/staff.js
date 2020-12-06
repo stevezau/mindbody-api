@@ -3,83 +3,56 @@ import moment from 'moment-timezone';
 import MindbodyBase from './base';
 
 export default class Staff extends MindbodyBase {
-  constructor(siteId, username, password, sourceName, apiToken, cookieJar, timezone) {
-    super('Staff', siteId, username, password, sourceName, apiToken, cookieJar);
+  constructor(siteId, username, password, sourceName, apiKey, cookieJar, timezone) {
+    super('Staff', siteId, username, password, sourceName, apiKey, cookieJar);
     this.timezone = timezone;
   }
 
-  getStaffSoap() {
-    const req = this.initSoapRequest();
-    req.XMLDetail = 'Full';
-
-    return new Promise((resolve, reject) => {
-      this.soapReq('GetStaff', 'GetStaffResult', req)
-        .then((result) => {
-          if (result.StaffMembers && result.StaffMembers.Staff) {
-            resolve(result.StaffMembers.Staff);
-          } else {
-            resolve([]);
-          }
-        })
-        .catch(err => reject(err));
+  async getStaffAPI() {
+    return await this.apiRequest('staff/staff', 'StaffMembers', {
+      method: 'get',
     });
   }
 
-  getStaffInactive() {
-    const req = this.initSoapRequest();
-    req.XMLDetail = 'Full';
-
-    return new Promise((resolve, reject) => {
-      this.get('https://clients.mindbodyonline.com/Staff/Manage')
-        .then((rsp) => {
-          const staffIds = [];
-          const $ = cheerio.load(rsp.data);
-          $('#inactiveStaffTable > tbody > tr').each((i, tr) => {
-            const tds = $(tr).children('td').map((_, td) => $(td));
-            const staffHref = tds[0].find('a').attr('href');
-            if (staffHref.length > 0) {
-              staffIds.push(Number(staffHref.match(/ID=([0-9]+)/)[1]));
-            }
-          });
-          return Promise.resolve(staffIds);
-        })
-        .then((staffIds) => {
-          staffIds.reduce((p, staffID) => {
-            return p.then(staff => this.getStaffByID(staffID).then(parsedStaff => [...staff, parsedStaff]));
-          }, Promise.resolve([])).then(staff => resolve(staff));
-        })
-        .catch(err => reject(err));
+  async getStaffInactive() {
+    const rsp = await this.webGet('https://clients.mindbodyonline.com/Staff/Manage');
+    const staffIds = [];
+    const $ = cheerio.load(rsp.data);
+    $('#inactiveStaffTable > tbody > tr').each((i, tr) => {
+      const tds = $(tr).children('td').map((_, td) => $(td));
+      const staffHref = tds[0].find('a').attr('href');
+      if (staffHref.length > 0) {
+        staffIds.push(Number(staffHref.match(/ID=([0-9]+)/)[1]));
+      }
     });
+
+    return Promise.all(staffIds.map(async staffId => {
+      const staff = await this.getStaffByID(staffId);
+      return {
+        ...staff,
+        Id: staff.ID
+      }
+    }));
   }
 
-  getStaff() {
-    return new Promise((resolve, reject) => {
-      Promise.all([this.getStaffSoap(), this.getStaffInactive()])
-        .then((results) => {
-          resolve(results[0].concat(results[1]));
-        })
-        .catch(err => reject(err));
-    });
+  async getStaff() {
+    const results = await Promise.all([this.getStaffAPI(), this.getStaffInactive()]);
+    return results[0].concat(results[1]);
   }
 
-  getStaffByID(staffID) {
-    return new Promise((resolve, reject) => {
-      this.get(`https://clients.mindbodyonline.com/asp/adm/adm_trn_e.asp?trnID=${staffID}`)
-        .then((rsp) => {
-          const $ = cheerio.load(rsp.data);
-          const firstName = $('#fauxFirst_Name').attr('value');
-          const lastName = $('#fauxLast_Name').attr('value');
-          const displayName = $('#txtDisplayName').attr('value');
+  async getStaffByID(staffID) {
+    const rsp = await this.webGet(`https://clients.mindbodyonline.com/asp/adm/adm_trn_e.asp?trnID=${staffID}`);
+    const $ = cheerio.load(rsp.data);
+    const firstName = $('#fauxFirst_Name').attr('value');
+    const lastName = $('#fauxLast_Name').attr('value');
+    const displayName = $('#txtDisplayName').attr('value');
 
-          resolve({
-            ID: staffID,
-            FirstName: firstName,
-            LastName: lastName,
-            Name: displayName || `${firstName} ${lastName}`.trim()
-          });
-        })
-        .catch(err => reject(err));
-    });
+    return {
+      ID: staffID,
+      FirstName: firstName,
+      LastName: lastName,
+      Name: displayName || `${firstName} ${lastName}`.trim()
+    };
   }
 
   parseTSTable(body) {
@@ -139,7 +112,7 @@ export default class Staff extends MindbodyBase {
     return timesheets;
   }
 
-  getTimesheets(from, to) {
+  async getTimesheets(from, to) {
     const form = {
       CSRFToken: '',
       reportUrl: '/ASP/adm/adm_tlbx_timeclock_list.asp',
@@ -153,18 +126,10 @@ export default class Staff extends MindbodyBase {
       frmGenPdf: false
     };
 
-    return new Promise((resolve, reject) => {
-      this.get('https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_timeclock_list.asp')
-        .then((rsp) => {
-          const $ = cheerio.load(rsp.data);
-          form.CSRFToken = $('input[name=CSRFToken]').attr('value');
-          return this.post('https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_timeclock_list.asp', form);
-        })
-        .then((rsp) => {
-          const timesheets = this.parseTSTable(rsp.data);
-          resolve(timesheets);
-        })
-        .catch(err => reject(err));
-    });
+    let rsp = await this.webGet('https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_timeclock_list.asp');
+    const $ = cheerio.load(rsp.data);
+    form.CSRFToken = $('input[name=CSRFToken]').attr('value');
+    rsp = await this.webPost('https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_timeclock_list.asp', form);
+    return this.parseTSTable(rsp.data);
   }
 }

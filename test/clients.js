@@ -6,50 +6,44 @@ const assert = chai.assert;
 const cli = new MBClients(config.id, config.username, config.password, config.sourceName, config.apiToken);
 
 describe('MindBody Clients', () => {
-  it('should return 10 clients', () => {
-    cli.getClients('', [], 0, 10).then(({ clients }) => {
-      assert.lengthOf(clients, 10);
+  it('should return clients', (done) => {
+    cli.getClients('', [], 0).then((clients) => {
+      assert.isAbove(clients.length, 10);
+      done();
     });
   });
 
-  it('should return second page 10 clients', () => {
-    cli.getClients(null, [], 1, 10).then(({ clients }) => {
-      assert.lengthOf(clients, 10);
-    });
-  });
-
-  it('should search client 100014514', (done) => {
-    cli.getClients(null, [100014514], 0, 10)
-      .then(({ clients }) => {
+  it('should search client 100000000', (done) => {
+    cli.getClients(null, [100000000], 0, 10)
+      .then((clients) => {
         assert.lengthOf(clients, 1);
         const client = clients[0];
-        assert.equal(client.ID, '100014514');
-        assert.equal(client.FirstName, 'Sally');
-        assert.equal(client.LastName, 'Demo');
+        assert.equal(client.Id, '100000000');
+        assert.isNotEmpty(client.FirstName);
+        assert.isNotEmpty(client.LastName);
         done();
       })
       .catch(err => done(err));
   });
 
-  it('should return single client 100014514', (done) => {
-    cli.getClient([100014514])
+  it('should return single client 100000000', (done) => {
+    cli.getClient(100000000)
       .then((client) => {
-        assert.equal(client.ID, '100014514');
-        assert.equal(client.FirstName, 'Sally');
-        assert.equal(client.LastName, 'Demo');
+        assert.equal(client.Id, '100000000');
+        assert.isNotEmpty(client.FirstName);
+        assert.isNotEmpty(client.LastName);
         done();
       })
       .catch(err => done(err));
   });
 
-  it('should return search demo andrew', (done) => {
-    cli.getClients('demo andrew', [], 0, 10)
-      .then(({ clients }) => {
-        assert.lengthOf(clients, 1);
+  it('should return search', (done) => {
+    cli.getClients('gemma', [], 0, 10)
+      .then((clients) => {
         const client = clients[0];
-        assert.equal(client.ID, '100015036');
-        assert.equal(client.FirstName, 'Andrew');
-        assert.equal(client.LastName, 'Demo');
+        assert.isNotNull(client.ID);
+        assert.isNotEmpty(client.FirstName);
+        assert.isNotEmpty(client.LastName);
         done();
       })
       .catch(err => done(err));

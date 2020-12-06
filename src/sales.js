@@ -11,7 +11,6 @@ function parseTable($, table, sales) {
     payMethod = payFormat[1]; // eslint-disable-line
   }
 
-
   // Figure out the col mappings
   const headers = Array.from(table.first('thead').find('th'));
   const findHeader = name => (
@@ -80,21 +79,12 @@ function parseTable($, table, sales) {
 }
 
 export default class Sales extends MindbodyBase {
-  constructor(siteId, username, password, sourceName, apiToken, cookieJar, timezone) {
-    super('Sale', siteId, username, password, sourceName, apiToken, cookieJar);
+  constructor(siteId, username, password, sourceName, apiKey, cookieJar, timezone) {
+    super('Sale', siteId, username, password, sourceName, apiKey, cookieJar);
     this.timezone = timezone;
   }
 
-  soapClient() {
-    return super.soapClient({
-      customDeserializer: {
-        dateTime: text => moment.tz(text, this.timezone),
-        date: text => moment.tz(text, this.timezone)
-      }
-    });
-  }
-
-  getSalesWeb(fromDate, toDate) {
+  async getSalesWeb(fromDate, toDate) {
     const form = {
       hPostAction: 'Generate',
       'sr-range-opt': '',
@@ -119,36 +109,29 @@ export default class Sales extends MindbodyBase {
       quickDateSelectionTwo: ''
     };
 
-    return new Promise((resolve, reject) => {
-      console.log('Running SalesWeb from:', form.requiredtxtDateStart, 'to:', form.requiredtxtDateEnd);
-      this.get('https://clients.mindbodyonline.com/Report/Sales/Sales')
-        .then((rsp) => {
-          const $ = cheerio.load(rsp.data);
-          $('#optSaleLoc option').each((i, el) => form.optSaleLoc.push($(el).attr('value')));
-          $('#optHomeStudio option').each((i, el) => form.optHomeStudio.push($(el).attr('value')));
-          $('#optPayMethod option').each((i, el) => form.optPayMethod.push($(el).attr('value')));
-          return this.get('https://clients.mindbodyonline.com/Ajax/GetCategoriesByType');
-        })
-        .then((rsp) => {
-          const $ = cheerio.load(rsp.data);
-          $('option').each((i, el) => {
-            form.optCategory.push($(el).attr('value'));
-          });
-          return this.post('https://clients.mindbodyonline.com/Report/Sales/Sales/Generate?reportID=undefined', form);
-        })
-        .then((rsp) => {
-          const sales = {};
-          const $ = cheerio.load(rsp.data);
-          $('table.result-table').each((i, el) => {
-            parseTable($, $(el), sales);
-          });
-          resolve(sales);
-        })
-        .catch(err => reject(err));
+    console.log('Running SalesWeb from:', form.requiredtxtDateStart, 'to:', form.requiredtxtDateEnd);
+    let rsp = await this.webGet('https://clients.mindbodyonline.com/Report/Sales/Sales');
+    let $ = cheerio.load(rsp.data);
+    $('#optSaleLoc option').each((i, el) => form.optSaleLoc.push($(el).attr('value')));
+    $('#optHomeStudio option').each((i, el) => form.optHomeStudio.push($(el).attr('value')));
+    $('#optPayMethod option').each((i, el) => form.optPayMethod.push($(el).attr('value')));
+
+    rsp = await this.webGet('https://clients.mindbodyonline.com/Ajax/GetCategoriesByType');
+    $ = cheerio.load(rsp.data);
+    $('option').each((i, el) => {
+      form.optCategory.push($(el).attr('value'));
     });
+    rsp = await this.webPost('https://clients.mindbodyonline.com/Report/Sales/Sales/Generate?reportID=undefined', form);
+
+    const sales = {};
+    $ = cheerio.load(rsp.data);
+    $('table.result-table').each((i, el) => {
+      parseTable($, $(el), sales);
+    });
+    return sales;
   }
 
-  getRepSales(fromDate, toDate) {
+  async getRepSales(fromDate, toDate) {
     const form = {
       hPostAction: 'Generate',
       'sr-range-opt': '',
@@ -170,161 +153,133 @@ export default class Sales extends MindbodyBase {
       optCategory: []
     };
 
-    return new Promise((resolve, reject) => {
-      console.log('Running SalesByRep from:', form.requiredtxtDateStart, 'to:', form.requiredtxtDateEnd);
-      this.get('https://clients.mindbodyonline.com/Report/Sales/SalesByRep')
-        .then((rsp) => {
-          const $ = cheerio.load(rsp.data);
-          $('#optSaleLoc option').each((i, el) => {
-            form.optSaleLoc.push($(el).attr('value'));
-          });
-          return this.get('https://clients.mindbodyonline.com/Ajax/GetCategoriesByType');
-        })
-        .then((rsp) => {
-          const $ = cheerio.load(rsp.data);
-          $('option').each((i, el) => {
-            form.optCategory.push($(el).attr('value'));
-          });
-          return this.post('https://clients.mindbodyonline.com/Report/Sales/SalesByRep/Generate?reportID=undefined', form);
-        })
-        .then((rsp) => {
-          const sales = {};
-          const $ = cheerio.load(rsp.data);
-
-          $('table.result-table').each((i, elem) => {
-            const table = $(elem);
-            const headers = Array.from(table.first('thead').find('th'));
-            const saleIndex = headers.findIndex(h => $(h).text().trim().toLowerCase() === 'sale id');
-            table.children('tbody').children('tr').each((_, tr) => {
-              const tds = $(tr).children('td').map((idx, td) => $(td));
-              const saleId = Number($(tds[saleIndex]).text());
-              if (!Number.isNaN(saleId)) {
-                let rep = table.children('caption').text().trim().split(',', 2);
-                rep = (rep.length === 2 ? `${rep[1]} ${rep[0]}` : `${rep[0]}`).trim();
-                sales[saleId] = rep;
-              }
-            });
-          });
-          resolve(sales);
-        })
-        .catch(err => reject(err));
+    console.log('Running SalesByRep from:', form.requiredtxtDateStart, 'to:', form.requiredtxtDateEnd);
+    let rsp = await this.webGet('https://clients.mindbodyonline.com/Report/Sales/SalesByRep');
+    let $ = cheerio.load(rsp.data);
+    $('#optSaleLoc option').each((i, el) => {
+      form.optSaleLoc.push($(el).attr('value'));
     });
+
+    rsp = await this.webGet('https://clients.mindbodyonline.com/Ajax/GetCategoriesByType');
+    $ = cheerio.load(rsp.data);
+    $('option').each((i, el) => {
+      form.optCategory.push($(el).attr('value'));
+    });
+    rsp = await this.webPost('https://clients.mindbodyonline.com/Report/Sales/SalesByRep/Generate?reportID=undefined', form);
+    const sales = {};
+    $ = cheerio.load(rsp.data);
+
+    $('table.result-table').each((i, elem) => {
+      const table = $(elem);
+      const headers = Array.from(table.first('thead').find('th'));
+      const saleIndex = headers.findIndex(h => $(h).text().trim().toLowerCase() === 'sale id');
+      table.children('tbody').children('tr').each((_, tr) => {
+        const tds = $(tr).children('td').map((idx, td) => $(td));
+        const saleId = Number($(tds[saleIndex]).text());
+        if (!Number.isNaN(saleId)) {
+          let rep = table.children('caption').text().trim().split(',', 2);
+          rep = (rep.length === 2 ? `${rep[1]} ${rep[0]}` : `${rep[0]}`).trim();
+          sales[saleId] = rep;
+        }
+      });
+    });
+    return sales;
   }
 
-  getSalesSoap(fromDate, toDate) {
-    const req = this.initSoapRequest();
-    req.XMLDetail = 'Full';
-    req.StartSaleDateTime = fromDate.toISOString();
-    req.EndSaleDateTime = toDate.toISOString();
+  async getSalesAPI(fromDate, toDate) {
+    const data = await this.apiRequest('sale/sales', 'Sales', {
+      method: 'get',
+      params: {
+        StartSaleDateTime: fromDate.toISOString(),
+        EndSaleDateTime: toDate.toISOString()
+      }
+    });
 
-    return new Promise((resolve, reject) => {
-      console.log('Getting sales via soap from:', fromDate.toISOString(), 'to:', toDate.toISOString());
-      this.soapReq('GetSales', 'GetSalesResult', req)
-        .then((result) => {
-          const sales = {};
+    const sales = {};
+    data.filter(s => s.Payments !== null).forEach((s) => {
+      const sale = { ...s };
+      sale.ID = Number(s.Id);
+      sale.ClientID = Number(s.ClientId);
+      sale.Payments = s.Payments.map((p) => {
+        const payment = { ...p };
+        payment.ID = Number(p.Id);
+        payment.Amount = parseFloat(p.Amount);
+        return payment;
+      });
+      sale.SaleDate = moment.tz(sale.SaleDate, this.timezone);
+      sale.SaleDateTime = moment.tz(sale.SaleDateTime, this.timezone);
+      sales[sale.ID] = sale;
+    });
 
-          if (result.Sales) {
-            result.Sales.Sale.filter(s => s.Payments !== null).forEach((s) => {
-              const sale = { ...s };
-              sale.ID = Number(s.ID);
-              sale.ClientID = Number(s.ClientID);
-              sale.Payments = s.Payments.Payment.map((p) => {
-                const payment = { ...p };
-                payment.ID = Number(p.ID);
-                payment.Amount = parseFloat(p.Amount);
-                return payment;
-              });
-              sales[s.ID] = sale;
-            });
+    return sales;
+  }
+
+  async getSaleUnits(saleId) {
+    const rsp = await this.webGet(`https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_voidedit.asp?saleno=${saleId}`);
+    const units = [];
+    const $ = cheerio.load(rsp.data);
+
+    $('table.adyenClass tr').each((_, tr) => {
+      const tds = $(tr).children('td').map((__, td) => $(td));
+      const text = tds[0].text();
+      const a = tds[0].find('a');
+      const unit = {
+        name: tds[0].find('b').text().trim(),
+        id: 0
+      };
+      if (tds.length !== 4 || !text.includes('Item:')) return;
+
+      if (a.length > 0) {
+        unit.id = Number($(a).attr('href').match(/Id=([0-9]+)/)[1]);
+        unit.type = 'product';
+      } else {
+        unit.type = text.includes('Gift Card') ? 'gift_card' : 'service';
+        const unitA = tds[tds.length - 1].find('a');
+        if (unitA.length > 0) {
+          const href = unitA.attr('href');
+          if (href.includes('saleno')) {
+            // Returned item, go to the original sale
+            const parsedHref = href.match(/.*saleno=([0-9]+)/);
+            if (parsedHref.length > 0) {
+              return units.push(this.getSaleUnits(Number(href[1])));
+            }
+          } else {
+            const parsedHref = href.match(/.*doRefund\([0-9]+.([0-9]+).*/);
+            if (parsedHref && parsedHref.length > 0) {
+              unit.id = Number(parsedHref[1]);
+            }
           }
-          resolve({ sales, countTotal: result.ResultCount, pagesTotal: result.TotalPageCount });
-        })
-        .catch(err => reject(err));
+        }
+      }
+      units.push(Promise.resolve(unit));
     });
+
+    return await Promise.all(units);
   }
 
-  getSaleUnits(saleId) {
-    return new Promise((resolve, reject) => {
-      this.get(`https://clients.mindbodyonline.com/ASP/adm/adm_tlbx_voidedit.asp?saleno=${saleId}`)
-        .then((rsp) => {
-          const units = [];
-          const $ = cheerio.load(rsp.data);
+  async getSales(fromDate, toDate) {
+    const getData = [
+      this.getSalesWeb(fromDate, toDate),
+      this.getSalesAPI(fromDate, toDate),
+      this.getRepSales(fromDate, toDate)
+    ];
 
-          $('table.adyenClass tr').each((_, tr) => {
-            const tds = $(tr).children('td').map((__, td) => $(td));
-            const text = tds[0].text();
-            const a = tds[0].find('a');
-            const unit = {
-              name: tds[0].find('b').text().trim(),
-              id: 0
-            };
-            if (tds.length !== 4 || !text.includes('Item:')) return;
+    const result = await Promise.all(getData);
+    const webSales = result[0];
+    const apiSales = result[1] || {};
+    const repSales = result[2];
+    const sales = [];
 
-            if (a.length > 0) {
-              unit.id = Number($(a).attr('href').match(/Id=([0-9]+)/)[1]);
-              unit.type = 'product';
-            } else {
-              unit.type = text.includes('Gift Card') ? 'gift_card' : 'service';
-              const unitA = tds[tds.length - 1].find('a');
-              if (unitA.length > 0) {
-                const href = unitA.attr('href');
-                if (href.includes('saleno')) {
-                  // Returned item, go to the original sale
-                  const parsedHref = href.match(/.*saleno=([0-9]+)/);
-                  if (parsedHref.length > 0) {
-                    return units.push(this.getSaleUnits(Number(href[1])));
-                  }
-                } else {
-                  const parsedHref = href.match(/.*doRefund\([0-9]+.([0-9]+).*/);
-                  if (parsedHref && parsedHref.length > 0) {
-                    unit.id = Number(parsedHref[1]);
-                  }
-                }
-              }
-            }
-            units.push(Promise.resolve(unit));
-          });
-          return Promise.all(units);
-        })
-        .then((units) => {
-          resolve({ units });
-        })
-        .catch(err => reject(err));
+    Object.values(webSales).forEach((s) => {
+      const sale = { ...s };
+      if (!apiSales[sale.ID]) {
+        console.log(`Sale ${sale.ID} was not found in API`, fromDate, toDate);
+      } else {
+        sale.Rep = repSales[sale.ID] || 'Unknown Staff';
+        sales.push(Object.assign(apiSales[Number(sale.ID)], sale));
+      }
     });
-  }
 
-  getSales(fromDate, toDate) {
-    return new Promise((resolve, reject) => {
-      const getData = [
-        this.getSalesWeb(fromDate, toDate),
-        this.getSalesSoap(fromDate, toDate),
-        this.getRepSales(fromDate, toDate)
-      ];
-
-      Promise.all(getData)
-        .then((result) => {
-          const webSales = result[0];
-          const soapSales = result[1].sales || {};
-          const repSales = result[2];
-          const sales = [];
-
-          Object.values(webSales).forEach((s) => {
-            const sale = { ...s };
-            if (!soapSales[sale.ID]) {
-              console.log(`Sale ${sale.ID} was not found in SOAP`, fromDate, toDate);
-            } else {
-              sale.Rep = repSales[sale.ID] || 'Unknown Staff';
-              sales.push(Object.assign(soapSales[Number(sale.ID)], sale));
-            }
-          });
-
-          resolve({
-            sales,
-            countTotal: result[0].ResultCount,
-            pagesTotal: result[0].TotalPageCount
-          });
-        })
-        .catch(err => reject(err));
-    });
+    return sales;
   }
 }
