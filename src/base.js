@@ -1,16 +1,14 @@
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import { Mutex } from 'async-mutex';
 import tough from 'tough-cookie';
 import { RateLimiter } from 'limiter';
 import qs from 'qs';
+
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 puppeteer.use(StealthPlugin());
 const limiter = new RateLimiter(1, 500);
 const axios = require('axios').default;
 const axiosCookieJarSupport = require('axios-cookiejar-support').default;
-
-const mutex = new Mutex();
 
 const ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36';
 
@@ -63,22 +61,24 @@ export default class MindBodyBase {
 
   async refreshCookies() {
     let browser = null;
-    console.log(`Waiting for access to puppteer for site ${this.siteId}`);
-    const release = await mutex.acquire();
-
     if (this.successAuth) {
-      console.log(`Got access to puppeteer for site ${this.siteId} but already authed so ignoring`);
+      console.log(`Already authed so ignoring`);
       return;
     }
 
-    console.log(`Got access to puppeteer for site ${this.siteId}`);
     try {
-      await this.jar.removeAllCookiesSync();
-      browser = await puppeteer.launch({
-        headless: true,
-        ignoreDefaultArgs: ['--enable-automation'],
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
+      if (process.env.BROWSERLESS_WSS) {
+        browser = await puppeteer.connect({
+          browserWSEndpoint: process.env.BROWSERLESS_WSS
+        });
+      } else {
+        browser = await puppeteer.launch({
+          headless: false,
+          ignoreDefaultArgs: ['--enable-automation'],
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+      }
+
       const page = await browser.newPage();
       await page.setViewport({
         width: 1600,
@@ -86,20 +86,37 @@ export default class MindBodyBase {
       });
       await page.setUserAgent(ua);
 
+      // Set current cookies in puppeteer.
+      await page.setCookie(...this.jar.getCookiesSync('https://clients.mindbodyonline.com').map(c => c.toJSON()).map(c => ({
+        name: c.key,
+        value: c.value || '',
+        url: 'https://clients.mindbodyonline.com/',
+        domain: c.domain,
+        path: c.path,
+        httpOnly: c.httpOnly,
+        sameSite: c.sameSite,
+        secure: c.hostOnly
+      })));
+
       console.log(`Logging into Mindbody site ${this.siteId}`);
       const url = `https://clients.mindbodyonline.com/launch/site?id=${this.siteId}`;
       await page.goto(url);
       await page.waitForNavigation({ waitUntil: 'networkidle2' });
-      console.log(`Entering Creds`);
-      await page.waitForSelector('#username');
-      await page.focus('#username');
-      await page.keyboard.type(this.username);
-      await page.waitForSelector('#password');
-      await page.focus('#password');
-      await page.keyboard.type(this.password);
-      const button = await page.waitForXPath('//span[text() = "Sign In"]');
-      await page.evaluate(ele => ele.click(), button);
-      await page.waitForXPath('//*[text() = "Sign Out"]');
+
+      // Check if we are authenticated?
+      const authed = await page.$x('//*[text() = "Sign Out"]');
+      if (!authed.length) {
+        console.log(`Entering Creds`);
+        await page.waitForSelector('#username');
+        await page.focus('#username');
+        await page.keyboard.type(this.username);
+        await page.waitForSelector('#password');
+        await page.focus('#password');
+        await page.keyboard.type(this.password);
+        const button = await page.waitForXPath('//span[text() = "Sign In"]');
+        await page.evaluate(ele => ele.click(), button);
+        await page.waitForXPath('//*[text() = "Sign Out"]');
+      }
 
       const cookies = await page._client.send('Network.getAllCookies');
       cookies.cookies.forEach((cookie) => {
@@ -122,8 +139,6 @@ export default class MindBodyBase {
       if (browser) {
         await browser.close();
       }
-      console.log(`Release access to puppteer for site ${this.siteId}`);
-      release();
     }
   }
 

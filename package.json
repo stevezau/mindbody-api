@@ -40,7 +40,6 @@
     "webpack-node-externals": "^1.7.2"
   },
   "dependencies": {
-    "async-mutex": "^0.2.6",
     "axios": "^0.21.0",
     "axios-cookiejar-support": "^1.0.1",
     "cheerio": "^1.0.0-rc.2",
