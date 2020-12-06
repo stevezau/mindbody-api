@@ -23,12 +23,13 @@ function removeTokens(count, limiter) {
   });
 }
 
-function loginRequired(rsp) {
+async function loginRequired(rsp) {
   if (typeof (rsp.data) == 'object') {
     return rsp.data.sessionExpired;
   }
   if (rsp.request.path.startsWith('/launch') || rsp.request.path.startsWith('/Error') || rsp.request.path.startsWith('/?err')) return true;
   if (!rsp.data) return false;
+
   return (
     rsp.data.includes('MINDBODY: Login') ||
     rsp.data.includes('MINDBODY Status') ||
@@ -116,6 +117,10 @@ export default class MindBodyBase {
         const button = await page.waitForXPath('//span[text() = "Sign In"]');
         await page.evaluate(ele => ele.click(), button);
         await page.waitForXPath('//*[text() = "Sign Out"]');
+      } else {
+        // Should force new refresh/auth token
+        await page.goto('https://clients.mindbodyonline.com/mainappointments/index?tabid=9');
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
       }
 
       const cookies = await page._client.send('Network.getAllCookies');
