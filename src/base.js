@@ -1,6 +1,7 @@
 import tough from 'tough-cookie';
 import { RateLimiter } from 'limiter';
 import qs from 'qs';
+import { Mutex } from 'async-mutex';
 
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -52,6 +53,7 @@ export default class MindBodyBase {
     this.password = password;
     this.jar = jar;
     this.successAuth = false;
+    this.mutux = new Mutex();
     this.webAxios = axios.create({
       jar,
       withCredentials: true,
@@ -66,6 +68,11 @@ export default class MindBodyBase {
 
   async refreshCookies() {
     let browser = null;
+
+    console.log(`Waiting for access to puppteer for site ${this.siteId}`);
+    const release = await this.mutux.acquire();
+    console.log(`Got access to puppeteer for site ${this.siteId}`);
+
     if (this.successAuth) {
       console.log(`Already authed so ignoring`);
       return;
@@ -147,6 +154,8 @@ export default class MindBodyBase {
       if (browser) {
         await browser.close();
       }
+      console.log(`Release access to puppteer for site ${this.siteId}`);
+      release();
     }
   }
 
