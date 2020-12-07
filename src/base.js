@@ -7,7 +7,6 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 puppeteer.use(StealthPlugin());
-const limiter = new RateLimiter(1, 500);
 const axios = require('axios').default;
 const axiosCookieJarSupport = require('axios-cookiejar-support').default;
 
@@ -59,6 +58,7 @@ export default class MindBodyBase {
     this.jar = jar;
     this.successAuth = false;
     this.mutux = new Mutex();
+    this.limiter = new RateLimiter(1, 300);
     this.webAxios = axios.create({
       jar,
       withCredentials: true,
@@ -178,7 +178,7 @@ export default class MindBodyBase {
   }
 
   async webRequest(config) {
-    await removeTokens(1, limiter);
+    await removeTokens(1, this.limiter);
     let rsp = await this.webAxios(config);
     if (loginRequired(rsp)) {
       await this.refreshCookies();
