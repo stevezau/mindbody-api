@@ -8,15 +8,6 @@ export default class Appointment extends MindbodyBase {
   }
 
   async getAppointmentsAPI(fromDate, toDate, staffIDs, fields = null) {
-    const sessionTypes = await this.apiRequest('site/sessiontypes', 'SessionTypes', {
-      method: 'get',
-    });
-
-    const sessionsMap = sessionTypes.reduce((accum, s) => {
-      accum[s.Id] = s;
-      return accum;
-    }, {});
-
     const staff = await this.apiRequest('appointment/scheduleitems', 'StaffMembers', {
       method: 'get',
       params: {
@@ -44,8 +35,7 @@ export default class Appointment extends MindbodyBase {
               staff: {
                 Id: appt.StaffId,
                 name: staffName
-              },
-              session: sessionsMap[appt.SessionTypeId] || {},
+              }
             });
           });
         } catch (err) {

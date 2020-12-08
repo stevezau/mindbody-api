@@ -1,15 +1,12 @@
 import MBAppts from '../src/appointments';
 import config from './index';
 import chai from 'chai';
-import moment from 'moment-timezone';
 
 const assert = chai.assert;
 const cli = new MBAppts(config.id, config.username, config.password, config.sourceName, config.apiToken, config.jar);
 
-//const fromDate = new Date(Date.now() - 2.592e+9); // minus 30 days
-//const toDate = new Date(Date.now());
-const fromDate = moment(new Date('2020-10-01')); // minus 30 days
-const toDate = moment(new Date('2020-10-01'));
+const fromDate = new Date(Date.now() - 2.592e+9); // minus 30 days
+const toDate = new Date(Date.now());
 
 describe('MindBody Appointments', () => {
   it('should return appointments api', (done) => {

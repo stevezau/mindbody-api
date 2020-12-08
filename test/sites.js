@@ -14,4 +14,24 @@ describe('MindBody Sites', () => {
       })
       .catch(err => done(err));
   });
+
+  it('should return programs', (done) => {
+    cli.getAllPrograms()
+      .then((programs) => {
+        assert.lengthOf(programs, 5);
+        done();
+      })
+      .catch(err => done(err));
+  });
+
+  it('should return sessionTypes', (done) => {
+    cli.getAllSessionTypes()
+      .then((sessionTypes) => {
+        assert.lengthOf(sessionTypes, 5);
+        done();
+      })
+      .catch(err => done(err));
+  });
+
+
 });
